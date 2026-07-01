@@ -66,6 +66,54 @@ let skipReflexes = false;
 let alternativeScreenActive = false;
 let savedPreAlternativeStep = null;
 let subStep = 0;
+let currentTestResults = null;
+
+function generateRandomTestResults() {
+    const ecv = (0.6 + Math.random() * 0.6).toFixed(2);
+    const peakVal = (0.2 + Math.random() * 0.5).toFixed(2);
+    const peakPress = Math.round(-60 + Math.random() * 80);
+    const tw = Math.round(80 + Math.random() * 40);
+
+    const freqs = [500, 1000, 2000, 4000];
+    const ipsi = {};
+    const contra = {};
+
+    freqs.forEach(freq => {
+        const ipsiAmp = (0.03 + Math.random() * 0.05).toFixed(2);
+        const contraAmp = (0.03 + Math.random() * 0.05).toFixed(2);
+        const ipsiDb = [75, 80, 85, 90][Math.floor(Math.random() * 4)];
+        const contraDb = [80, 85, 90, 95][Math.floor(Math.random() * 4)];
+
+        ipsi[freq] = { amp: ipsiAmp, db: ipsiDb };
+        contra[freq] = { amp: contraAmp, db: contraDb };
+    });
+
+    currentTestResults = {
+        ecv,
+        tw,
+        peakVal,
+        peakPress,
+        ipsi,
+        contra
+    };
+}
+
+function getTympCurvePath(peakPress, peakVal) {
+    let d = "";
+    for (let i = 0; i <= 100; i++) {
+        const percent = i / 100;
+        const P = -200 + percent * 400;
+        const compliance = (peakVal - 0.05) * Math.exp(-Math.pow((P - peakPress) / 75, 2)) + 0.05;
+        const svgX = 30 + percent * 215;
+        const svgY = 148 - (compliance / 3.0) * 133;
+        if (i === 0) {
+            d += `M ${svgX},${svgY}`;
+        } else {
+            d += ` L ${svgX},${svgY}`;
+        }
+    }
+    return d;
+}
 
 const simSteps = {
     1: {
@@ -180,7 +228,7 @@ const simSteps = {
                     </svg>
                 </div>
                 <div id="tymp-result-bar" style="display:none; font-size:2.2cqw; padding:1cqw 2cqw; background:#f8fafc; border-top:1px solid #e2e8f0;">
-                    ECV: <strong>0.75</strong> ml &nbsp; TW: <strong>107</strong> daPa &nbsp; Peak: <strong>0.26</strong> ml / <strong>-25</strong> daPa
+                    ECV: <strong id="res-ecv">0.75</strong> ml &nbsp; TW: <strong id="res-tw">107</strong> daPa &nbsp; Peak: <strong id="res-peak">0.26</strong> ml / <strong id="res-press">-25</strong> daPa
                 </div>
                 <div id="tymp-status-bar" class="screen-bottom-bar" style="justify-content:center; font-size:2.2cqw;">
                     <span class="screen-icon-indicator"><i class="fa-solid fa-spinner fa-spin"></i> Medindo...</span>
@@ -284,7 +332,13 @@ function getReflexScreenHTML(mode, isAnimating) {
 
     const checkDisplay = ipsiDone ? '' : 'display:none;';
     const dbDisplay = ipsiDone ? '' : 'display:none;';
-    const ampText = isAnimating ? '---' : '0.05';
+    
+    // Read from currentTestResults state
+    const ipsiLast = currentTestResults ? currentTestResults.ipsi[4000] : { amp: '0.05', db: '80' };
+    const contraLast = currentTestResults ? currentTestResults.contra[4000] : { amp: '0.05', db: '85' };
+
+    const ampText = isAnimating ? '---' : (mode === 'ipsi-done' ? ipsiLast.amp : (contraDone ? contraLast.amp : '---'));
+    const dbText = mode === 'ipsi-done' ? ipsiLast.db : (contraDone ? contraLast.db : '80');
     const freqText = isAnimating ? '500 Hz' : '4000 Hz';
 
     return `<div class="reflex-screen">
@@ -315,7 +369,7 @@ function getReflexScreenHTML(mode, isAnimating) {
             <div class="reflex-info">
                 <div id="reflex-amp" class="reflex-amp-value">${ampText}</div>
                 <div id="reflex-check" class="reflex-check-icon" style="${checkDisplay}"><i class="fa-solid fa-check"></i></div>
-                <div id="reflex-db" class="reflex-db-value" style="${dbDisplay}">80<br><span class="reflex-db-unit">dB HL</span></div>
+                <div id="reflex-db" class="reflex-db-value" style="${dbDisplay}">${dbText}<br><span class="reflex-db-unit">dB HL</span></div>
             </div>
         </div>
         <div class="reflex-toggle-row">
@@ -342,7 +396,9 @@ function getIpsiTraceSVG() {
     for (let i = 0; i < 4; i++) {
         const xStart = 20 + i * 25;
         const yBase = 60 - i * 3;
-        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase+8} L${xStart+8},${yBase+6} L${xStart+12},${yBase+1} L${xStart+18},${yBase}" fill="none" stroke="${colors[i]}" stroke-width="1" opacity="0.9"/>`;
+        const amp = currentTestResults ? parseFloat(currentTestResults.ipsi[freqs[i]].amp) : 0.05;
+        const deflection = amp * 120;
+        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}" fill="none" stroke="${colors[i]}" stroke-width="1" opacity="0.9"/>`;
     }
     return svg;
 }
@@ -350,17 +406,29 @@ function getIpsiTraceSVG() {
 // Helper: SVG traces for completed contra reflexes
 function getContraTraceSVG() {
     const colors = ['#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1'];
+    const freqs = [500, 1000, 2000, 4000];
     let svg = '';
     for (let i = 0; i < 4; i++) {
         const xStart = 20 + i * 25;
         const yBase = 48 - i * 3;
-        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase+7} L${xStart+8},${yBase+5} L${xStart+12},${yBase+1} L${xStart+18},${yBase}" fill="none" stroke="${colors[i]}" stroke-width="1" opacity="0.9"/>`;
+        const amp = currentTestResults ? parseFloat(currentTestResults.contra[freqs[i]].amp) : 0.05;
+        const deflection = amp * 120;
+        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}" fill="none" stroke="${colors[i]}" stroke-width="1" opacity="0.9"/>`;
     }
     return svg;
 }
 
 // Helper: final tympanometry result screen with full axes
 function getFinalResultScreenHTML() {
+    const peakPress = currentTestResults ? parseFloat(currentTestResults.peakPress) : -25;
+    const peakVal = currentTestResults ? parseFloat(currentTestResults.peakVal) : 0.26;
+    const ecv = currentTestResults ? currentTestResults.ecv : '0.75';
+    const tw = currentTestResults ? currentTestResults.tw : '107';
+
+    const peakX = 30 + ((peakPress + 200) / 400) * 215;
+    const peakY = 148 - (peakVal / 3.0) * 133;
+    const curveD = getTympCurvePath(peakPress, peakVal);
+
     return `<div class="screen-plot-container" style="padding:0;">
         <div class="tymp-result-header">
             <span style="font-weight:700; color:#1e293b;">YBG</span>
@@ -392,13 +460,13 @@ function getFinalResultScreenHTML() {
                 <line x1="138" y1="15" x2="138" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
                 <line x1="191" y1="15" x2="191" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
                 <rect x="112" y="80" width="50" height="42" fill="rgba(16,185,129,0.05)" stroke="rgba(16,185,129,0.25)" stroke-width="0.5" stroke-dasharray="3"/>
-                <path d="M 30,135 C 80,135 100,120 125,103 C 140,95 160,103 175,120 C 200,135 230,135 245,135" fill="none" stroke="#0284c7" stroke-width="1.5"/>
-                <circle cx="125" cy="103" r="2.5" fill="#0284c7"/>
+                <path d="${curveD}" fill="none" stroke="#0284c7" stroke-width="1.5"/>
+                <circle cx="${peakX}" cy="${peakY}" r="2.5" fill="#0284c7"/>
             </svg>
         </div>
         <div style="font-size:2.2cqw; padding:1.2cqw 2cqw; background:#f8fafc; border-top:1px solid #e2e8f0; line-height:1.6;">
-            ECV: <strong>0.75</strong> ml &nbsp; TW: <strong>107</strong> daPa<br>
-            Peak: <strong>0.26</strong> ml / <strong>-25</strong> daPa
+            ECV: <strong>${ecv}</strong> ml &nbsp; TW: <strong>${tw}</strong> daPa<br>
+            Peak: <strong>${peakVal}</strong> ml / <strong>${peakPress}</strong> daPa
         </div>
         <div style="display:flex; justify-content:center; padding:1.5cqw 0;">
             <button class="screen-btn active-target" id="btn-complete-sim" style="background:var(--pink-primary); color:#fff; border:none; width:80%;">Finalizar Estudo</button>
@@ -688,6 +756,7 @@ function loadStep(stepNum) {
     if (stepNum === 1) {
         skipReflexes = false;
         alternativeScreenActive = false;
+        generateRandomTestResults();
     }
 
     const stepData = simSteps[currentStep];
@@ -737,14 +806,17 @@ function runTympPlotAnimation() {
     const liveC = document.getElementById('live-c');
     let progress = 0;
 
+    const peakProgressPercent = (200 - parseFloat(currentTestResults.peakPress)) / 400;
+    const peakVal = parseFloat(currentTestResults.peakVal);
+
     const interval = setInterval(() => {
         progress += 4;
         
         // Map pressure from +200 to -200
         const currentPressure = Math.round(200 - (progress / 100) * 400);
-        // Complacência rises and falls (Normal Type A curve shape, peak around -25 daPa which is progress=56.25%)
+        // Complacência rises and falls based on dynamic peak position and peak value
         const xPercent = progress / 100;
-        const currentCompliance = (Math.exp(-Math.pow((xPercent - 0.5625) * 4, 2)) * 0.23 + 0.03).toFixed(2);
+        const currentCompliance = ((peakVal - 0.05) * Math.exp(-Math.pow((xPercent - peakProgressPercent) * 4, 2)) + 0.05).toFixed(2);
 
         if (liveP) liveP.innerText = currentPressure;
         if (liveC) liveC.innerText = currentCompliance;
@@ -774,6 +846,15 @@ function runTympPlotAnimation() {
         if (progress >= 100) {
             clearInterval(interval);
             
+            const resEcv = document.getElementById('res-ecv');
+            const resTw = document.getElementById('res-tw');
+            const resPeak = document.getElementById('res-peak');
+            const resPress = document.getElementById('res-press');
+            if (resEcv) resEcv.innerText = currentTestResults.ecv;
+            if (resTw) resTw.innerText = currentTestResults.tw;
+            if (resPeak) resPeak.innerText = currentTestResults.peakVal;
+            if (resPress) resPress.innerText = currentTestResults.peakPress;
+
             const resultBar = document.getElementById('tymp-result-bar');
             const statusBar = document.getElementById('tymp-status-bar');
             if (resultBar) resultBar.style.display = 'block';
@@ -781,8 +862,10 @@ function runTympPlotAnimation() {
             
             const peakMarker = document.getElementById('peak-marker');
             if (peakMarker) {
-                peakMarker.setAttribute('cx', '150.9');
-                peakMarker.setAttribute('cy', '136.5');
+                const peakX = 30 + peakProgressPercent * 215;
+                const peakY = 148 - (peakVal / 3.0) * 133;
+                peakMarker.setAttribute('cx', peakX);
+                peakMarker.setAttribute('cy', peakY);
                 peakMarker.style.display = 'block';
             }
 
@@ -814,6 +897,7 @@ function runIpsiReflexAnimation() {
         }
 
         const currentFreq = freqs[freqIdx];
+        const ipsiData = currentTestResults.ipsi[currentFreq];
         
         // Update on-screen testing indicators
         const freqLabel = document.getElementById('reflex-freq');
@@ -840,8 +924,10 @@ function runIpsiReflexAnimation() {
                 const colors = ['#22c55e', '#84cc16', '#eab308', '#f97316'];
                 const xStart = 20 + freqIdx * 25;
                 const yBase = 60 - freqIdx * 3;
+                const deflection = parseFloat(ipsiData.amp) * 120;
+
                 const newPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                newPath.setAttribute('d', `M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase+8} L${xStart+8},${yBase+6} L${xStart+12},${yBase+1} L${xStart+18},${yBase}`);
+                newPath.setAttribute('d', `M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}`);
                 newPath.setAttribute('fill', 'none');
                 newPath.setAttribute('stroke', colors[freqIdx]);
                 newPath.setAttribute('stroke-width', '1');
@@ -850,10 +936,10 @@ function runIpsiReflexAnimation() {
             }
 
             // Success feedback
-            if (ampLabel) ampLabel.innerText = (0.04 + Math.random() * 0.02).toFixed(2);
+            if (ampLabel) ampLabel.innerText = ipsiData.amp;
             if (checkIcon) checkIcon.style.display = 'block';
             if (dbLabel) {
-                dbLabel.innerHTML = `80<br><span class="reflex-db-unit">dB HL</span>`;
+                dbLabel.innerHTML = `${ipsiData.db}<br><span class="reflex-db-unit">dB HL</span>`;
                 dbLabel.style.display = 'block';
             }
 
@@ -899,6 +985,7 @@ function runContraReflexAnimation() {
         }
 
         const currentFreq = freqs[freqIdx];
+        const contraData = currentTestResults.contra[currentFreq];
         
         // Update on-screen testing indicators
         const freqLabel = document.getElementById('reflex-freq');
@@ -925,8 +1012,10 @@ function runContraReflexAnimation() {
                 const colors = ['#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1'];
                 const xStart = 20 + freqIdx * 25;
                 const yBase = 48 - freqIdx * 3;
+                const deflection = parseFloat(contraData.amp) * 120;
+
                 const newPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                newPath.setAttribute('d', `M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase+7} L${xStart+8},${yBase+5} L${xStart+12},${yBase+1} L${xStart+18},${yBase}`);
+                newPath.setAttribute('d', `M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}`);
                 newPath.setAttribute('fill', 'none');
                 newPath.setAttribute('stroke', colors[freqIdx]);
                 newPath.setAttribute('stroke-width', '1');
@@ -935,10 +1024,10 @@ function runContraReflexAnimation() {
             }
 
             // Success feedback
-            if (ampLabel) ampLabel.innerText = (0.04 + Math.random() * 0.02).toFixed(2);
+            if (ampLabel) ampLabel.innerText = contraData.amp;
             if (checkIcon) checkIcon.style.display = 'block';
             if (dbLabel) {
-                dbLabel.innerHTML = `85<br><span class="reflex-db-unit">dB HL</span>`;
+                dbLabel.innerHTML = `${contraData.db}<br><span class="reflex-db-unit">dB HL</span>`;
                 dbLabel.style.display = 'block';
             }
 
