@@ -734,10 +734,7 @@ body {
     background: #f1f5f9;
 }
 
-.screen-btn.active-target {
-    border-color: var(--pink-primary);
-    box-shadow: 0 0 0 1px var(--pink-primary);
-}
+
 
 .screen-btn.success-flash {
     background: #d1fae5 !important;
@@ -1338,3 +1335,228 @@ input[type="range"]::-webkit-slider-thumb:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* ==========================================================================
+   MODO APARELHO REALISTA (IPAD & PORTABLE)
+   ========================================================================== */
+
+/* Botões flutuantes externos de controle */
+.device-only-controls {
+    display: none; /* Apenas visível no modo aparelho */
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    gap: 10px;
+}
+
+.device-only-controls .floating-btn {
+    background: rgba(25, 28, 44, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.device-only-controls .floating-btn:hover {
+    background: rgba(25, 28, 44, 0.95);
+    transform: translateY(-2px);
+    border-color: var(--pink-primary);
+}
+
+/* Modificadores para quando o modo aparelho estiver ativo */
+body.device-only-active .app-sidebar {
+    display: none !important;
+}
+
+body.device-only-active .app-main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at 50% 50%, #1e1b29 0%, #0a0b10 100%) !important;
+}
+
+body.device-only-active #simulator {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+body.device-only-active #simulator .header-section,
+body.device-only-active .sim-instructions-panel,
+body.device-only-active .device-info-bar {
+    display: none !important;
+}
+
+body.device-only-active .simulator-layout {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body.device-only-active .device-column {
+    width: 100%;
+    max-width: 580px; /* Aumenta consideravelmente o tamanho do aparelho */
+    margin: 0 auto;
+}
+
+body.device-only-active .device-mockup {
+    max-width: 100%;
+    border-width: 4px;
+    box-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.9);
+}
+
+body.device-only-active .device-only-controls {
+    display: flex; /* Exibe os botões no modo aparelho */
+}
+
+/* ==========================================================================
+   CONTAINER QUERIES PARA ESCALONAMENTO DO VISOR
+   ========================================================================== */
+.device-screen {
+    container-type: inline-size;
+}
+
+/* Seletor genérico para aplicar escalonamento automático a fontes e espaçamentos */
+@container (min-width: 10px) {
+    .device-screen .screen-header {
+        font-size: 2.8cqw !important;
+        padding: 1.5cqw 3cqw !important;
+    }
+    
+    .device-screen .screen-title {
+        font-size: 3.8cqw !important;
+        margin-bottom: 2cqw !important;
+        padding-bottom: 1.5cqw !important;
+    }
+    
+    .device-screen .screen-btn {
+        font-size: 3.2cqw !important;
+        padding: 2.2cqw 3cqw !important;
+        border-radius: 1.5cqw !important;
+        gap: 1cqw !important;
+    }
+    
+    .device-screen .screen-plot-data {
+        font-size: 2.8cqw !important;
+        padding: 1.5cqw 2.5cqw !important;
+        border-radius: 1cqw !important;
+    }
+    
+    .device-screen .screen-small-btn {
+        font-size: 2.8cqw !important;
+        padding: 1.8cqw !important;
+        border-radius: 1cqw !important;
+    }
+    
+    .device-screen .screen-icon-indicator {
+        font-size: 2.8cqw !important;
+    }
+    
+    .device-screen .screen-plot-chart {
+        margin: 1.5cqw 0 !important;
+        border-radius: 1cqw !important;
+    }
+
+    /* Utilitários gerados em app.js via classes */
+    .device-screen .ear-select-row {
+        padding-top: 4cqw !important;
+    }
+    
+    .device-screen .ear-btn {
+        height: 16cqw !important;
+    }
+    
+    .device-screen .anim-mode-wrapper {
+        font-size: 2.8cqw !important;
+        margin-top: 4cqw !important;
+        gap: 1.5cqw !important;
+    }
+
+    .device-screen .ipsi-grid {
+        font-size: 2.8cqw !important;
+        gap: 1cqw !important;
+        padding: 1.5cqw !important;
+    }
+    
+    .device-screen .confirm-dialog {
+        padding: 3cqw !important;
+        border-radius: 2cqw !important;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+    }
+    
+    .device-screen .confirm-dialog-title {
+        font-size: 3.2cqw !important;
+        margin-bottom: 2cqw !important;
+    }
+
+    .device-screen .confirm-dialog-buttons {
+        gap: 2cqw !important;
+    }
+
+    .device-screen .confirm-dialog-btn {
+        padding: 2cqw 3cqw !important;
+    }
+    
+    .device-screen .confirm-dialog-cancel {
+        margin-top: 1.5cqw !important;
+        font-size: 2.5cqw !important;
+    }
+
+    .device-screen .history-list-wrapper {
+        gap: 1cqw !important;
+    }
+
+    .device-screen .history-item-btn {
+        padding: 2cqw !important;
+        font-size: 2.8cqw !important;
+        border-radius: 1cqw !important;
+    }
+}
+
+/* Classes Utilitárias para cores dos botões específicos do visor */
+.ear-btn-right {
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+.ear-btn-left {
+    background: #fdf2f8 !important;
+    color: #be185d !important;
+    border-color: #fbcfe8 !important;
+}
+.confirm-dialog-yes {
+    background: #d1fae5 !important;
+    border-color: #a7f3d0 !important;
+    color: #065f46 !important;
+}
+.confirm-dialog-no {
+    background: #fee2e2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+.screen-btn-sm {
+    font-size: 2.8cqw !important;
+    padding: 1.5cqw 3cqw !important;
+}
+

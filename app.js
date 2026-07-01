@@ -28,12 +28,30 @@ function initTabs() {
                 }
             });
 
+            // Toggle simulator-only full device mode for iPad
+            if (tabId === 'simulator') {
+                document.body.classList.add('device-only-active');
+            } else {
+                document.body.classList.remove('device-only-active');
+            }
+
             // Trigger canvas resizing or redraws if necessary
             if (tabId === 'lab-curvas') {
                 updateCurve();
             }
         });
     });
+
+    // Exit device mode button (restores sidebar and returns to prep tab)
+    const exitBtn = document.getElementById('btn-exit-device-mode');
+    if (exitBtn) {
+        exitBtn.addEventListener('click', () => {
+            const prepTabBtn = document.getElementById('btn-tab-prep');
+            if (prepTabBtn) {
+                prepTabBtn.click();
+            }
+        });
+    }
 }
 
 // ==========================================================================
@@ -43,6 +61,10 @@ let currentStep = 1;
 const totalSteps = 12;
 let simulatorActive = true;
 let isMutedReflex = false; // Dummy variable for state
+let animModeActive = false;
+let skipReflexes = false;
+let alternativeScreenActive = false;
+let savedPreAlternativeStep = null;
 
 const simSteps = {
     1: {
@@ -90,11 +112,11 @@ const simSteps = {
         alertText: "Selecione 'Direito' ou 'Esquerdo' para iniciar.",
         getScreenHTML: () => `
             <div class="screen-title">Selecionar Orelha</div>
-            <div class="screen-row-split" style="padding-top: 15px;">
-                <div class="screen-btn active-target ear-btn" id="btn-direito" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd; height: 60px;">Direito</div>
-                <div class="screen-btn active-target ear-btn" id="btn-esquerdo" style="background:#fdf2f8; color:#be185d; border-color:#fbcfe8; height: 60px;">Esquerdo</div>
+            <div class="screen-row-split ear-select-row">
+                <div class="screen-btn active-target ear-btn ear-btn-right" id="btn-direito">Direito</div>
+                <div class="screen-btn active-target ear-btn ear-btn-left" id="btn-esquerdo">Esquerdo</div>
             </div>
-            <div style="font-size:0.65rem; margin-top: 15px; display:flex; align-items:center; gap: 6px; justify-content: center;">
+            <div class="anim-mode-wrapper" style="display:flex; align-items:center; justify-content: center;">
                 <input type="checkbox" id="anim-mode"> Modo desenho animado
             </div>
         `
@@ -105,24 +127,45 @@ const simSteps = {
         note: "O paciente deve permanecer imóvel, sem falar ou engolir para não distorcer a curva.",
         targetSelector: "#btn-auto-next-4", // will auto-advance or let them click next
         alertText: "Traçando a curva timpanométrica... aguarde.",
-        getScreenHTML: () => `
-            <div class="screen-plot-container">
-                <div class="screen-plot-data">
-                    <span>Press: <strong id="live-p">---</strong> daPa</span>
-                    <span>Comp: <strong id="live-c">---</strong> mL</span>
+        getScreenHTML: () => {
+            if (animModeActive) {
+                return `
+                    <div class="screen-plot-container cartoon-screen-active">
+                        <div class="cartoon-header" style="display:flex; justify-content:space-between; font-size: 2.5cqw; background:#f1f5f9; padding:1.5cqw 2cqw;">
+                            <span>Exame Infantil</span>
+                            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-face-smile"></i> Silêncio</span>
+                        </div>
+                        <div class="cartoon-animation-area" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:1cqw; background:#fff; position:relative; overflow:hidden;">
+                            <div id="cartoon-character" style="font-size: 10cqw; transition: transform 0.08s ease; color:#38bdf8; display:flex; align-items:center; justify-content:center;">
+                                <i class="fa-solid fa-cat"></i>
+                            </div>
+                            <div class="cartoon-text" style="font-size:2.8cqw; margin-top:2cqw; font-weight:600; color:#475569;">O gatinho está crescendo!</div>
+                        </div>
+                        <div class="screen-bottom-bar" style="justify-content: center;">
+                            <span class="screen-icon-indicator"><i class="fa-solid fa-spinner fa-spin"></i> Timpanometria...</span>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="screen-plot-container">
+                    <div class="screen-plot-data">
+                        <span>Press: <strong id="live-p">---</strong> daPa</span>
+                        <span>Comp: <strong id="live-c">---</strong> mL</span>
+                    </div>
+                    <div class="screen-plot-chart">
+                        <svg class="screen-plot-svg" viewBox="0 0 200 100">
+                            <line x1="10" y1="85" x2="190" y2="85" stroke="#cbd5e1" stroke-width="1"/>
+                            <line x1="100" y1="10" x2="100" y2="85" stroke="#e2e8f0" stroke-dasharray="2"/>
+                            <path id="live-curve" d="" fill="none" stroke="var(--pink-primary)" stroke-width="2" />
+                        </svg>
+                    </div>
+                    <div class="screen-bottom-bar" style="justify-content: center;">
+                        <span class="screen-icon-indicator"><i class="fa-solid fa-spinner fa-spin"></i> Medindo Timpanometria...</span>
+                    </div>
                 </div>
-                <div class="screen-plot-chart">
-                    <svg class="screen-plot-svg" viewBox="0 0 200 100">
-                        <line x1="10" y1="85" x2="190" y2="85" stroke="#cbd5e1" stroke-width="1"/>
-                        <line x1="100" y1="10" x2="100" y2="85" stroke="#e2e8f0" stroke-dasharray="2"/>
-                        <path id="live-curve" d="" fill="none" stroke="var(--pink-primary)" stroke-width="2" />
-                    </svg>
-                </div>
-                <div class="screen-bottom-bar" style="justify-content: center;">
-                    <span class="screen-icon-indicator"><i class="fa-solid fa-spinner fa-spin"></i> Medindo Timpanometria...</span>
-                </div>
-            </div>
-        `
+            `;
+        }
     },
     5: {
         title: "Passo 5: Espere o Ipsi ser feito",
@@ -130,26 +173,47 @@ const simSteps = {
         note: "Aparecerão marcações (certos) para cada frequência testada (500, 1000, 2000, 4000 Hz) a 80 dB HL.",
         targetSelector: "#btn-auto-next-5",
         alertText: "Pesquisando reflexos ipsilaterais... aguarde.",
-        getScreenHTML: () => `
-            <div class="screen-plot-container">
-                <div class="screen-plot-data" style="font-size:0.6rem;">
-                    <span>TIMP OK</span>
-                    <span style="color:var(--success)">IPSI EM CURSO</span>
+        getScreenHTML: () => {
+            if (animModeActive) {
+                return `
+                    <div class="screen-plot-container cartoon-screen-active">
+                        <div class="cartoon-header" style="display:flex; justify-content:space-between; font-size: 2.5cqw; background:#f1f5f9; padding:1.5cqw 2cqw;">
+                            <span>Exame Infantil: IPSI</span>
+                            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-volume-high"></i> Ouvindo Sons</span>
+                        </div>
+                        <div class="cartoon-animation-area" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:1cqw; background:#fff; position:relative; overflow:hidden;">
+                            <div id="cartoon-character" style="font-size: 10cqw; color:#ec4899; transition: transform 0.3s ease; display:flex; align-items:center; justify-content:center;">
+                                <i class="fa-solid fa-cat"></i>
+                            </div>
+                            <div class="cartoon-text" id="cartoon-text-ipsi" style="font-size:2.8cqw; margin-top:2cqw; font-weight:600; color:#475569;">Alimente o gatinho!</div>
+                        </div>
+                        <div class="screen-bottom-bar" style="justify-content: center; font-size: 2.5cqw; background:#f1f5f9; padding:1cqw 2cqw;">
+                            <span id="ipsi-kids-status">Testando...</span>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="screen-plot-container">
+                    <div class="screen-plot-data">
+                        <span>TIMP OK</span>
+                        <span style="color:var(--success)">IPSI EM CURSO</span>
+                    </div>
+                    <div class="ipsi-grid" style="flex-grow: 1; display:grid; grid-template-columns: 1fr 1fr; align-content: center;">
+                        <div id="ipsi-500">500 Hz: <i class="fa-solid fa-circle-notch fa-spin"></i></div>
+                        <div id="ipsi-1000">1000 Hz: --</div>
+                        <div id="ipsi-2000">2000 Hz: --</div>
+                        <div id="ipsi-4000">4000 Hz: --</div>
+                    </div>
+                    <div class="screen-bottom-bar" style="justify-content: center;">
+                        <span class="screen-icon-indicator" style="color: var(--pink-primary); font-weight:700; display:flex; align-items:center; justify-content:center;">
+                            <span class="dot active" style="background:var(--pink-primary); display:inline-block; border-radius:50%; margin-right:4px; width:6px; height:6px;"></span>
+                            Pesquisando IPSI...
+                        </span>
+                    </div>
                 </div>
-                <div style="flex-grow: 1; padding: 5px; font-size: 0.65rem; display:grid; grid-template-columns: 1fr 1fr; gap: 4px; align-content: center;">
-                    <div id="ipsi-500">500 Hz: <i class="fa-solid fa-circle-notch fa-spin"></i></div>
-                    <div id="ipsi-1000">1000 Hz: --</div>
-                    <div id="ipsi-2000">2000 Hz: --</div>
-                    <div id="ipsi-4000">4000 Hz: --</div>
-                </div>
-                <div class="screen-bottom-bar" style="justify-content: center;">
-                    <span class="screen-icon-indicator" style="color: var(--pink-primary); font-weight:700;">
-                        <span class="dot active" style="background:var(--pink-primary); display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:4px;"></span>
-                        Pesquisando IPSI...
-                    </span>
-                </div>
-            </div>
-        `
+            `;
+        }
     },
     6: {
         title: "Passo 6: Ao terminar aperte “contra”",
@@ -159,13 +223,13 @@ const simSteps = {
         alertText: "Aperte 'contra' na tela para mudar o modo de reflexo.",
         getScreenHTML: () => `
             <div class="screen-plot-container">
-                <div class="screen-plot-data" style="font-size: 0.6rem; justify-content: space-around;">
+                <div class="screen-plot-data" style="justify-content: space-around;">
                     <span style="color: var(--success)"><i class="fa-solid fa-check"></i> Ipsi OK</span>
                     <span style="font-weight: 500;">Contra: Pendente</span>
                 </div>
-                <div style="display:flex; justify-content: center; gap: 15px; margin: 10px 0;">
-                    <div class="screen-btn" style="padding: 6px 12px; font-size:0.7rem;">ipsi</div>
-                    <div class="screen-btn active-target" id="btn-contra" style="padding: 6px 12px; font-size:0.7rem; border-color: var(--pink-primary); background: #fdf2f8;">contra</div>
+                <div class="ipsi-contra-toggle-row" style="display:flex; justify-content: center; align-items: center; margin: 2cqw 0;">
+                    <div class="screen-btn screen-btn-sm">ipsi</div>
+                    <div class="screen-btn active-target screen-btn-sm" id="btn-contra" style="border-color: var(--pink-primary); background: #fdf2f8;">contra</div>
                 </div>
                 <div class="screen-bottom-bar">
                     <span class="screen-icon-indicator success"><i class="fa-solid fa-check"></i> Ipsi Concluído</span>
@@ -181,12 +245,12 @@ const simSteps = {
         alertText: "Aperte o botão 'Play' (ícone azul da seta) na tela.",
         getScreenHTML: () => `
             <div class="screen-plot-container">
-                <div style="font-size:0.7rem; text-align:center; padding: 10px 0; font-weight:700;">Pronto para Contralateral</div>
-                <div style="display:flex; justify-content: center; gap: 15px; font-size:0.7rem; color: #64748b;">
+                <div style="text-align:center; font-weight:700; font-size: 3.2cqw; padding: 2cqw 0;">Pronto para Contralateral</div>
+                <div style="display:flex; justify-content: center; color: #64748b; font-size: 2.8cqw; gap: 4cqw;">
                     <span>ipsi <i class="fa-solid fa-check" style="color:var(--success)"></i></span>
-                    <span style="font-weight:700; color:#1e293b;">contra <i class="fa-solid fa-circle" style="color:var(--cyan-primary); font-size:0.5rem"></i></span>
+                    <span style="font-weight:700; color:#1e293b;">contra <i class="fa-solid fa-circle" style="color:var(--cyan-primary); font-size: 1.5cqw"></i></span>
                 </div>
-                <div class="screen-bottom-bar" style="margin-top: 15px;">
+                <div class="screen-bottom-bar" style="margin-top: 3cqw;">
                     <div class="screen-small-btn play-btn active-target" id="btn-screen-play"><i class="fa-solid fa-play"></i> Iniciar</div>
                     <div class="screen-small-btn stop-btn"><i class="fa-solid fa-square"></i></div>
                 </div>
@@ -199,24 +263,45 @@ const simSteps = {
         note: "O estímulo será emitido pelo fone de ouvido de forma crescente até detectar o limiar do reflexo.",
         targetSelector: "#btn-auto-next-8",
         alertText: "Pesquisando reflexos contralaterais... aguarde.",
-        getScreenHTML: () => `
-            <div class="screen-plot-container">
-                <div class="screen-plot-data" style="font-size:0.6rem;">
-                    <span>TIMP & IPSI OK</span>
-                    <span style="color:var(--cyan-primary)">CONTRA EM CURSO</span>
+        getScreenHTML: () => {
+            if (animModeActive) {
+                return `
+                    <div class="screen-plot-container cartoon-screen-active">
+                        <div class="cartoon-header" style="display:flex; justify-content:space-between; font-size: 2.5cqw; background:#f1f5f9; padding:1.5cqw 2cqw;">
+                            <span>Exame Infantil: CONTRA</span>
+                            <span style="color:var(--cyan-primary); font-weight:700;"><i class="fa-solid fa-headphones"></i> Contra-lateral</span>
+                        </div>
+                        <div class="cartoon-animation-area" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:1cqw; background:#fff; position:relative; overflow:hidden;">
+                            <div id="cartoon-character" style="font-size: 10cqw; color:#06b6d4; transition: transform 0.3s ease; display:flex; align-items:center; justify-content:center;">
+                                <i class="fa-solid fa-fish"></i>
+                            </div>
+                            <div class="cartoon-text" id="cartoon-text-contra" style="font-size:2.8cqw; margin-top:2cqw; font-weight:600; color:#475569;">O peixinho está nadando!</div>
+                        </div>
+                        <div class="screen-bottom-bar" style="justify-content: center; font-size: 2.5cqw; background:#f1f5f9; padding:1cqw 2cqw;">
+                            <span id="contra-kids-status">Testando...</span>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="screen-plot-container">
+                    <div class="screen-plot-data">
+                        <span>TIMP & IPSI OK</span>
+                        <span style="color:var(--cyan-primary)">CONTRA EM CURSO</span>
+                    </div>
+                    <div class="ipsi-grid" style="flex-grow: 1; display:grid; grid-template-columns: 1fr 1fr; align-content: center;">
+                        <div id="contra-500">500 Hz: <i class="fa-solid fa-circle-notch fa-spin"></i></div>
+                        <div id="contra-1000">1000 Hz: --</div>
+                        <div id="contra-2000">2000 Hz: --</div>
+                        <div id="contra-4000">4000 Hz: --</div>
+                    </div>
+                    <div class="screen-bottom-bar">
+                        <div class="screen-small-btn play-btn" style="opacity: 0.5; pointer-events:none;"><i class="fa-solid fa-play"></i></div>
+                        <div class="screen-small-btn stop-btn" style="background:#fee2e2; border-color:#fecaca; display:flex; align-items:center; justify-content:center; gap: 1cqw;"><i class="fa-solid fa-square fa-fade"></i> Parar</div>
+                    </div>
                 </div>
-                <div style="flex-grow: 1; padding: 5px; font-size: 0.65rem; display:grid; grid-template-columns: 1fr 1fr; gap: 4px; align-content: center;">
-                    <div id="contra-500">500 Hz: <i class="fa-solid fa-circle-notch fa-spin"></i></div>
-                    <div id="contra-1000">1000 Hz: --</div>
-                    <div id="contra-2000">2000 Hz: --</div>
-                    <div id="contra-4000">4000 Hz: --</div>
-                </div>
-                <div class="screen-bottom-bar">
-                    <div class="screen-small-btn play-btn" style="opacity: 0.5; pointer-events:none;"><i class="fa-solid fa-play"></i></div>
-                    <div class="screen-small-btn stop-btn" style="background:#fee2e2; border-color:#fecaca;"><i class="fa-solid fa-square fa-fade"></i> Parar</div>
-                </div>
-            </div>
-        `
+            `;
+        }
     },
     9: {
         title: "Passo 9: Aperte o “quadrado”",
@@ -226,11 +311,11 @@ const simSteps = {
         alertText: "Aperte o botão 'Quadrado' (Parar) para salvar.",
         getScreenHTML: () => `
             <div class="screen-plot-container">
-                <div class="screen-plot-data" style="font-size:0.6rem; justify-content:space-around;">
+                <div class="screen-plot-data" style="justify-content:space-around;">
                     <span style="color: var(--success)"><i class="fa-solid fa-check"></i> IPSI OK</span>
                     <span style="color: var(--success)"><i class="fa-solid fa-check"></i> CONTRA OK</span>
                 </div>
-                <div style="text-align:center; padding: 10px 0; font-size: 0.7rem; color: var(--success); font-weight:700;">
+                <div style="text-align:center; font-weight:700; color: var(--success); font-size: 3cqw; padding: 2cqw 0;">
                     <i class="fa-solid fa-circle-check"></i> Coleta Concluída!
                 </div>
                 <div class="screen-bottom-bar">
@@ -247,14 +332,14 @@ const simSteps = {
         targetSelector: "#btn-sim-gravar",
         alertText: "Selecione 'Sim' para salvar os dados do exame.",
         getScreenHTML: () => `
-            <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding: 10px;">
-                <div style="background:#fff; border: 1px solid #cbd5e1; border-radius: 8px; width: 100%; padding: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    <div style="font-size:0.7rem; font-weight:700; text-align:center; margin-bottom: 8px; color: #1e293b;">Gravar dados?</div>
-                    <div style="display:flex; justify-content:space-around; gap:8px;">
-                        <button class="screen-btn active-target" id="btn-sim-gravar" style="padding: 6px 12px; flex-grow:1; background:#d1fae5; border-color:#a7f3d0; color:#065f46;">Sim</button>
-                        <button class="screen-btn" style="padding: 6px 12px; flex-grow:1; background:#fee2e2; border-color:#fecaca; color:#991b1b;">Não</button>
+            <div class="confirm-dialog-wrapper" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                <div class="confirm-dialog" style="background:#fff; border: 1px solid #cbd5e1; width: 100%;">
+                    <div class="confirm-dialog-title" style="font-weight:700; text-align:center; color: #1e293b;">Gravar dados?</div>
+                    <div class="confirm-dialog-buttons" style="display:flex; justify-content:space-around;">
+                        <button class="screen-btn active-target confirm-dialog-btn confirm-dialog-yes" id="btn-sim-gravar" style="flex-grow:1;">Sim</button>
+                        <button class="screen-btn confirm-dialog-btn confirm-dialog-no" style="flex-grow:1;">Não</button>
                     </div>
-                    <div style="text-align:center; margin-top:6px; font-size:0.55rem; color:#94a3b8;">Cancelar</div>
+                    <div class="confirm-dialog-cancel" style="text-align:center; color:#94a3b8;">Cancelar</div>
                 </div>
             </div>
         `
@@ -267,16 +352,16 @@ const simSteps = {
         alertText: "Selecione a gravação 'Tymp226' da lista.",
         getScreenHTML: () => `
             <div class="screen-title">Histórico de Exames</div>
-            <div style="flex-grow:1; display:flex; flex-direction:column; gap:4px; overflow-y:auto; padding: 2px;">
-                <div class="screen-btn active-target" id="btn-tymp226-log" style="flex-direction:row; justify-content:space-between; padding: 6px; font-size: 0.65rem;">
+            <div class="history-list-wrapper" style="flex-grow:1; display:flex; flex-direction:column; overflow-y:auto; padding: 2px;">
+                <div class="screen-btn active-target history-item-btn" id="btn-tymp226-log" style="flex-direction:row; justify-content:space-between;">
                     <span>Tymp226 (11:18)</span>
                     <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
                 </div>
-                <div class="screen-btn" style="flex-direction:row; justify-content:space-between; padding: 6px; font-size: 0.65rem;">
+                <div class="screen-btn history-item-btn" style="flex-direction:row; justify-content:space-between;">
                     <span>Reflexo (11:21)</span>
                     <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
                 </div>
-                <div class="screen-btn" style="flex-direction:row; justify-content:space-between; padding: 6px; font-size: 0.65rem;">
+                <div class="screen-btn history-item-btn" style="flex-direction:row; justify-content:space-between;">
                     <span>Tymp226 (11:05)</span>
                     <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
                 </div>
@@ -289,29 +374,53 @@ const simSteps = {
         note: "Parabéns! Você completou com sucesso todos os passos operacionais do exame de reflexo acústico e timpanometria.",
         targetSelector: "#btn-complete-sim",
         alertText: "Exame concluído! Anote os resultados.",
-        getScreenHTML: () => `
-            <div class="screen-plot-container">
-                <div class="screen-plot-data" style="font-size:0.55rem; padding:2px 4px;">
-                    <span>ECV: 0.75 ml</span>
-                    <span>Peak: 0.26 ml</span>
-                    <span>Press: -25 daPa</span>
+        getScreenHTML: () => {
+            if (skipReflexes) {
+                return `
+                    <div class="screen-plot-container">
+                        <div class="screen-plot-data" style="padding:2px 4px; background:#fee2e2; border-color:#fecaca; color:#b91c1c;">
+                            <span>Exame Incompleto: Reflexos Ausentes!</span>
+                        </div>
+                        <div class="screen-plot-chart" style="margin:2cqw 0;">
+                            <svg class="screen-plot-svg" viewBox="0 0 200 100">
+                                <rect x="75" y="45" width="50" height="40" fill="rgba(239, 68, 68, 0.05)" stroke="rgba(239, 68, 68, 0.2)" stroke-dasharray="1" />
+                                <line x1="10" y1="85" x2="190" y2="85" stroke="#cbd5e1" stroke-width="1"/>
+                                <path d="M 10,84 C 60,84 80,68 95,65 C 110,62 130,84 190,84" fill="none" stroke="#ef4444" stroke-width="2" />
+                                <circle cx="95" cy="65" r="3" fill="#ef4444" />
+                            </svg>
+                        </div>
+                        <div style="display:flex; justify-content:center; padding: 1.5cqw 0;">
+                            <button class="screen-btn active-target confirm-dialog-btn confirm-dialog-no" id="btn-complete-sim" style="width:80%;">Refazer Exame (TY+REF)</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="screen-plot-container">
+                    <div class="screen-plot-data" style="padding:2px 4px;">
+                        <span>ECV: 0.75 ml</span>
+                        <span>Peak: 0.26 ml</span>
+                        <span>Press: -25 daPa</span>
+                    </div>
+                    <div class="screen-plot-chart">
+                        <svg class="screen-plot-svg" viewBox="0 0 200 100">
+                            <!-- Limites normalidade tracejado -->
+                            <rect x="75" y="45" width="50" height="40" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.2)" stroke-dasharray="1" />
+                            <line x1="10" y1="85" x2="190" y2="85" stroke="#cbd5e1" stroke-width="1"/>
+                            <path d="M 10,84 C 60,84 80,68 95,65 C 110,62 130,84 190,84" fill="none" stroke="#0284c7" stroke-width="2" />
+                            <circle cx="95" cy="65" r="3" fill="#0284c7" />
+                        </svg>
+                    </div>
+                    <div style="display:flex; justify-content:center; padding: 1.5cqw 0;">
+                        <button class="screen-btn active-target" id="btn-complete-sim" style="background:var(--pink-primary); color:#fff; border:none; width:80%;">Finalizar Estudo</button>
+                    </div>
                 </div>
-                <div class="screen-plot-chart" style="margin:2px 0;">
-                    <svg class="screen-plot-svg" viewBox="0 0 200 100">
-                        <!-- Limites normalidade tracejado -->
-                        <rect x="75" y="45" width="50" height="40" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.2)" stroke-dasharray="1" />
-                        <line x1="10" y1="85" x2="190" y2="85" stroke="#cbd5e1" stroke-width="1"/>
-                        <path d="M 10,84 C 60,84 80,68 95,65 C 110,62 130,84 190,84" fill="none" stroke="#0284c7" stroke-width="2" />
-                        <circle cx="95" cy="65" r="3" fill="#0284c7" />
-                    </svg>
-                </div>
-                <div style="display:flex; justify-content:center; padding: 4px 0;">
-                    <button class="screen-btn active-target" id="btn-complete-sim" style="padding: 4px 10px; font-size:0.6rem; background:var(--pink-primary); color:#fff; border:none; width:80%;">Finalizar Estudo</button>
-                </div>
-            </div>
-        `
+            `;
+        }
     }
 };
+
+
 
 function initSimulator() {
     loadStep(1);
@@ -326,10 +435,41 @@ function initSimulator() {
         loadStep(1);
     });
 
+    // Botão flutuante de reiniciar o aparelho (iPad)
+    const restartDeviceBtn = document.getElementById('btn-restart-device');
+    if (restartDeviceBtn) {
+        restartDeviceBtn.addEventListener('click', () => {
+            loadStep(1);
+        });
+    }
+
     // Device click-handler using delegation
     const screenContainer = document.getElementById('screen-content');
     screenContainer.addEventListener('click', (e) => {
         if (!simulatorActive) return;
+
+        // SE UMA TELA ALTERNATIVA ESTIVER ATIVA (fluxo de erro realista)
+        if (alternativeScreenActive) {
+            if (e.target.closest('#btn-alt-sair')) {
+                alternativeScreenActive = false;
+                loadStep(savedPreAlternativeStep);
+            } else if (e.target.closest('#btn-alt-sim-timp')) {
+                alternativeScreenActive = false;
+                skipReflexes = true;
+                loadStep(3);
+            } else if (e.target.closest('#btn-alt-voltar-contra')) {
+                alternativeScreenActive = false;
+                loadStep(savedPreAlternativeStep);
+            } else if (e.target.closest('#btn-alt-reset')) {
+                alternativeScreenActive = false;
+                skipReflexes = false;
+                loadStep(1);
+            } else if (e.target.closest('#btn-alt-log-voltar')) {
+                alternativeScreenActive = false;
+                loadStep(savedPreAlternativeStep);
+            }
+            return;
+        }
 
         const stepData = simSteps[currentStep];
         if (!stepData) return;
@@ -340,6 +480,13 @@ function initSimulator() {
         if (targetElement) {
             // Correct click! Show visual feedback
             targetElement.classList.add('success-flash');
+
+            // Capture cartoon mode state if on step 3
+            if (currentStep === 3) {
+                const animModeCheckbox = document.getElementById('anim-mode');
+                animModeActive = animModeCheckbox ? animModeCheckbox.checked : false;
+            }
+
             document.getElementById('device-alert').innerText = "Excelente! Passo correto.";
             document.getElementById('device-alert').style.color = "var(--success)";
             hideHint();
@@ -349,7 +496,9 @@ function initSimulator() {
                 if (currentStep === 4) {
                     // Handled inside next load
                 } else if (currentStep === 12) {
-                    alert("Você concluiu a simulação passo a passo! Agora pratique as curvas no laboratório.");
+                    if (!document.body.classList.contains('device-only-active')) {
+                        alert("Você concluiu a simulação passo a passo! Agora pratique as curvas no laboratório.");
+                    }
                     loadStep(1);
                 } else {
                     loadStep(currentStep + 1);
@@ -357,15 +506,155 @@ function initSimulator() {
             }, 500);
 
         } else {
-            // Incorrect click
-            const activeBtn = screenContainer.querySelector(stepData.targetSelector);
-            if (activeBtn) {
-                activeBtn.classList.add('error-flash');
-                setTimeout(() => activeBtn.classList.remove('error-flash'), 400);
+            // Clicou no botão errado: fluxo interativo e realista
+            const clickedBtn = e.target.closest('.screen-btn, .screen-small-btn');
+            if (clickedBtn) {
+                const id = clickedBtn.id;
+
+                // Passo 1: clicou em outro módulo
+                if (currentStep === 1 && (id === 'btn-ref-manual' || id === 'btn-declinio' || id === 'btn-esrt' || id === 'btn-etf')) {
+                    savedPreAlternativeStep = currentStep;
+                    alternativeScreenActive = true;
+                    screenContainer.innerHTML = `
+                        <div class="screen-title" style="font-size:3.5cqw;">Módulo Indisponível</div>
+                        <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding: 3cqw; text-align:center;">
+                            <div style="font-size: 8cqw; color:var(--pink-primary); margin-bottom:2cqw;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                            <div style="font-size:2.8cqw; font-weight:600; color:#475569; margin-bottom:3cqw;">Este módulo não faz parte do protocolo de exame solicitado (Reflexo Acústico + Timpanometria).</div>
+                            <button class="screen-btn" id="btn-alt-sair" style="width:80%; padding:2cqw; background:#f1f5f9; border-color:#cbd5e1;">Voltar</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Passo 2: clicou em apenas Timpanometria (TIMP)
+                if (currentStep === 2 && id === 'btn-timp-only') {
+                    savedPreAlternativeStep = currentStep;
+                    alternativeScreenActive = true;
+                    screenContainer.innerHTML = `
+                        <div class="screen-title" style="font-size:3.5cqw;">Aviso de Protocolo</div>
+                        <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding: 3cqw; text-align:center;">
+                            <div style="font-size: 8cqw; color:#f59e0b; margin-bottom:2cqw;"><i class="fa-solid fa-circle-info"></i></div>
+                            <div style="font-size:2.8cqw; font-weight:600; color:#475569; margin-bottom:3cqw;">Ao selecionar apenas "TIMP", a pesquisa de reflexos ipsi e contra não será executada. Tem certeza?</div>
+                            <div style="display:flex; gap:2cqw; width:100%;">
+                                <button class="screen-btn" id="btn-alt-sim-timp" style="flex-grow:1; padding:2cqw; background:#fee2e2; border-color:#fecaca; color:#b91c1c;">Sim</button>
+                                <button class="screen-btn" id="btn-alt-sair" style="flex-grow:1; padding:2cqw; background:#d1fae5; border-color:#a7f3d0; color:#065f46;">Não</button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Passo 6: clicou no botão ipsi (já finalizado) ao invés de contra
+                if (currentStep === 6 && clickedBtn.innerText.trim() === 'ipsi') {
+                    savedPreAlternativeStep = currentStep;
+                    alternativeScreenActive = true;
+                    screenContainer.innerHTML = `
+                        <div class="screen-plot-container">
+                            <div class="screen-plot-data" style="justify-content:space-around;">
+                                <span style="color:var(--success)"><i class="fa-solid fa-check"></i> IPSI REVISÃO</span>
+                            </div>
+                            <div class="ipsi-grid" style="flex-grow: 1; display:grid; grid-template-columns: 1fr 1fr; align-content: center; font-size:2.8cqw; padding:2cqw; gap:1cqw;">
+                                <div>500 Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 80 dB HL</span></div>
+                                <div>1000 Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 80 dB HL</span></div>
+                                <div>2000 Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 80 dB HL</span></div>
+                                <div>4000 Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 80 dB HL</span></div>
+                            </div>
+                            <div class="screen-bottom-bar" style="margin: 2cqw 0;">
+                                <div class="screen-btn" style="flex-grow:1; padding:2cqw; background:#d1fae5;">ipsi</div>
+                                <div class="screen-btn" id="btn-alt-voltar-contra" style="flex-grow:1; padding:2cqw; border-color:var(--pink-primary);">contra</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Passo 7: clicou em parar/stop
+                if (currentStep === 7 && clickedBtn.classList.contains('stop-btn')) {
+                    savedPreAlternativeStep = currentStep;
+                    alternativeScreenActive = true;
+                    screenContainer.innerHTML = `
+                        <div class="confirm-dialog-wrapper" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                            <div class="confirm-dialog" style="background:#fff; border: 1px solid #cbd5e1; width: 100%; text-align:center; padding:3cqw;">
+                                <div class="confirm-dialog-title" style="font-weight:700; color: #ef4444; font-size:3.2cqw; margin-bottom:2cqw;"><i class="fa-solid fa-triangle-exclamation"></i> Abortar Exame?</div>
+                                <div style="font-size:2.8cqw; color:#475569; margin-bottom:3cqw;">Deseja descartar todos os dados coletados e reiniciar?</div>
+                                <div style="display:flex; gap:2cqw; width:100%;">
+                                    <button class="screen-btn confirm-dialog-btn confirm-dialog-no" id="btn-alt-reset" style="flex-grow:1; padding:2cqw;">Sim</button>
+                                    <button class="screen-btn confirm-dialog-btn confirm-dialog-yes" id="btn-alt-sair" style="flex-grow:1; padding:2cqw;">Não</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Passo 10: respondeu "Não" para gravar os dados (descarta os dados)
+                if (currentStep === 10 && clickedBtn.innerText.trim() === 'Não') {
+                    savedPreAlternativeStep = currentStep;
+                    alternativeScreenActive = true;
+                    screenContainer.innerHTML = `
+                        <div class="confirm-dialog-wrapper" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                            <div class="confirm-dialog" style="background:#fff; border: 1px solid #cbd5e1; width: 100%; text-align:center; padding:3cqw;">
+                                <div class="confirm-dialog-title" style="font-weight:700; color: #ef4444; font-size:3.2cqw; margin-bottom:2cqw;"><i class="fa-solid fa-circle-xmark"></i> Exame Descartado!</div>
+                                <div style="font-size:2.8cqw; color:#475569; margin-bottom:3cqw;">Os dados coletados não foram salvos e foram apagados.</div>
+                                <button class="screen-btn confirm-dialog-btn confirm-dialog-yes" id="btn-alt-reset" style="width:100%; padding:2cqw;">Iniciar Novo Exame</button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Passo 11: escolheu rever histórico de Reflexos ao invés de timpanometria Tymp226
+                if (currentStep === 11 && clickedBtn.innerText.includes('Reflexo')) {
+                    savedPreAlternativeStep = currentStep;
+                    alternativeScreenActive = true;
+                    screenContainer.innerHTML = `
+                        <div class="screen-title" style="font-size:3.5cqw;">Limiares de Reflexo</div>
+                        <div style="flex-grow:1; display:flex; flex-direction:column; gap:2cqw; font-size:2.6cqw; padding:2cqw;">
+                            <table style="width:100%; border-collapse:collapse; text-align:center; font-size:2.6cqw;">
+                                <thead>
+                                    <tr style="background:#cbd5e1; font-weight:700;">
+                                        <th style="padding:1cqw;">Modo</th>
+                                        <th>500</th>
+                                        <th>1K</th>
+                                        <th>2K</th>
+                                        <th>4K</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight:600; padding:1cqw;">IPSI</td>
+                                        <td>80</td>
+                                        <td>80</td>
+                                        <td>80</td>
+                                        <td>80</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:600; padding:1cqw;">CONTRA</td>
+                                        <td>85</td>
+                                        <td>85</td>
+                                        <td>85</td>
+                                        <td>85</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button class="screen-btn" id="btn-alt-log-voltar" style="width:100%; padding:2cqw; margin-top:2cqw; background:#f1f5f9;">Voltar ao Histórico</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Se clicou em outro botão incorreto genérico, pisca em vermelho
+                clickedBtn.classList.add('error-flash');
+                setTimeout(() => clickedBtn.classList.remove('error-flash'), 400);
             }
+            
             document.getElementById('device-alert').innerText = "Oops! Clique no botão correto.";
             document.getElementById('device-alert').style.color = "var(--danger)";
-            showHint();
+            
+            // Apenas exibe a dica de clique se não estiver no modo realista (iPad)
+            if (!document.body.classList.contains('device-only-active')) {
+                showHint();
+            }
         }
     });
 }
@@ -374,6 +663,11 @@ function loadStep(stepNum) {
     currentStep = stepNum;
     simulatorActive = true;
     hideHint();
+
+    if (stepNum === 1) {
+        skipReflexes = false;
+        alternativeScreenActive = false;
+    }
 
     const stepData = simSteps[currentStep];
     if (!stepData) return;
@@ -434,18 +728,29 @@ function runTympPlotAnimation() {
         const xPercent = progress / 100;
         const currentCompliance = (Math.exp(-Math.pow((xPercent - 0.55) * 4, 2)) * 0.75 + 0.1).toFixed(2);
 
-        liveP.innerText = currentPressure;
-        liveC.innerText = currentCompliance;
+        if (liveP) liveP.innerText = currentPressure;
+        if (liveC) liveC.innerText = currentCompliance;
 
-        // Draw SVG Path incrementally
-        const svgX = 10 + (progress / 100) * 180;
-        const svgY = 85 - (currentCompliance / 1.0) * 70;
-        
-        if (progress === 4) {
-            liveCurve.setAttribute('d', `M ${svgX},${svgY}`);
-        } else {
-            const currentD = liveCurve.getAttribute('d');
-            liveCurve.setAttribute('d', `${currentD} L ${svgX},${svgY}`);
+        // Draw SVG Path incrementally if in standard mode
+        if (liveCurve) {
+            const svgX = 10 + (progress / 100) * 180;
+            const svgY = 85 - (currentCompliance / 1.0) * 70;
+            
+            if (progress === 4) {
+                liveCurve.setAttribute('d', `M ${svgX},${svgY}`);
+            } else {
+                const currentD = liveCurve.getAttribute('d');
+                liveCurve.setAttribute('d', `${currentD} L ${svgX},${svgY}`);
+            }
+        }
+
+        // Animates character scale in Cartoon Mode
+        if (animModeActive) {
+            const char = document.getElementById('cartoon-character');
+            if (char) {
+                const scale = 1 + (progress / 100) * 1.2;
+                char.style.transform = `scale(${scale})`;
+            }
         }
 
         if (progress >= 100) {
@@ -453,7 +758,11 @@ function runTympPlotAnimation() {
             document.getElementById('device-alert').innerText = "Curva traçada. Avançando...";
             document.getElementById('device-alert').style.color = "var(--success)";
             setTimeout(() => {
-                loadStep(5);
+                if (skipReflexes) {
+                    loadStep(9); // Pula reflexos se selecionou TIMP apenas
+                } else {
+                    loadStep(5);
+                }
             }, 1000);
         }
     }, 80);
@@ -476,18 +785,50 @@ function runIpsiReflexAnimation() {
         const currentFreq = freqs[freqIdx];
         const el = document.getElementById(`ipsi-${currentFreq}`);
         
+        if (animModeActive) {
+            const kidsStatus = document.getElementById('ipsi-kids-status');
+            if (kidsStatus) {
+                kidsStatus.innerHTML = `Testando ${currentFreq} Hz... <i class="fa-solid fa-spinner fa-spin"></i>`;
+            }
+        }
+
         setTimeout(() => {
             // Success detection
-            el.innerHTML = `${currentFreq} Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 80 dB HL</span>`;
+            if (el) {
+                el.innerHTML = `${currentFreq} Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 80 dB HL</span>`;
+            }
+
+            if (animModeActive) {
+                const char = document.getElementById('cartoon-character');
+                const txt = document.getElementById('cartoon-text-ipsi');
+                const kidsStatus = document.getElementById('ipsi-kids-status');
+                
+                if (kidsStatus) {
+                    kidsStatus.innerText = `${currentFreq} Hz OK!`;
+                }
+                if (char && txt) {
+                    // Feed animation
+                    char.style.transform = `scale(1.3) rotate(${freqIdx * 15}deg)`;
+                    setTimeout(() => {
+                        char.style.transform = `scale(1) rotate(0deg)`;
+                    }, 400);
+                    
+                    const treats = ["🐟 peixe", "🥛 leite", "🧶 novelo", "🍗 frango"];
+                    txt.innerText = `O gatinho ganhou: ${treats[freqIdx]}!`;
+                }
+            }
+
             freqIdx++;
             
             // Trigger animation on next frequency
             if (freqIdx < freqs.length) {
                 const nextEl = document.getElementById(`ipsi-${freqs[freqIdx]}`);
-                nextEl.innerHTML = `${freqs[freqIdx]} Hz: <i class="fa-solid fa-circle-notch fa-spin" style="color:var(--pink-primary)"></i>`;
+                if (nextEl) {
+                    nextEl.innerHTML = `${freqs[freqIdx]} Hz: <i class="fa-solid fa-circle-notch fa-spin" style="color:var(--pink-primary)"></i>`;
+                }
             }
             testNextFrequency();
-        }, 800);
+        }, 1000);
     }
 
     testNextFrequency();
@@ -510,18 +851,47 @@ function runContraReflexAnimation() {
         const currentFreq = freqs[freqIdx];
         const el = document.getElementById(`contra-${currentFreq}`);
         
+        if (animModeActive) {
+            const kidsStatus = document.getElementById('contra-kids-status');
+            if (kidsStatus) {
+                kidsStatus.innerHTML = `Testando ${currentFreq} Hz... <i class="fa-solid fa-spinner fa-spin"></i>`;
+            }
+        }
+
         setTimeout(() => {
             // Success detection
-            el.innerHTML = `${currentFreq} Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 85 dB HL</span>`;
+            if (el) {
+                el.innerHTML = `${currentFreq} Hz: <span style="color:var(--success)"><i class="fa-solid fa-check"></i> 85 dB HL</span>`;
+            }
+
+            if (animModeActive) {
+                const char = document.getElementById('cartoon-character');
+                const txt = document.getElementById('cartoon-text-contra');
+                const kidsStatus = document.getElementById('contra-kids-status');
+                
+                if (kidsStatus) {
+                    kidsStatus.innerText = `${currentFreq} Hz OK!`;
+                }
+                if (char && txt) {
+                    // Swim animation
+                    char.style.transform = `translateX(${freqIdx % 2 === 0 ? '15px' : '-15px'}) scaleX(${freqIdx % 2 === 0 ? 1 : -1})`;
+                    
+                    const fishRewards = ["⭐ estrela", "🐚 concha", "🫧 bolha", "👑 coroa"];
+                    txt.innerText = `O peixinho encontrou: ${fishRewards[freqIdx]}!`;
+                }
+            }
+
             freqIdx++;
             
             // Trigger animation on next frequency
             if (freqIdx < freqs.length) {
                 const nextEl = document.getElementById(`contra-${freqs[freqIdx]}`);
-                nextEl.innerHTML = `${freqs[freqIdx]} Hz: <i class="fa-solid fa-circle-notch fa-spin" style="color:var(--pink-primary)"></i>`;
+                if (nextEl) {
+                    nextEl.innerHTML = `${freqs[freqIdx]} Hz: <i class="fa-solid fa-circle-notch fa-spin" style="color:var(--pink-primary)"></i>`;
+                }
             }
             testNextFrequency();
-        }, 800);
+        }, 1000);
     }
 
     testNextFrequency();
