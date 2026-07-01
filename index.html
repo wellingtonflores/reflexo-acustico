@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudo Interativo: Reflexo Acústico & Timpanometria</title>
+    <!-- Google Fonts: Outfit (headings) and Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <header class="app-sidebar">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="fa-solid fa-wave-square"></i></div>
+                <h1>Reflexo Acústico <span>& Timpanometria</span></h1>
+            </div>
+            <nav class="app-nav">
+                <button class="nav-btn active" data-tab="prep-orientation" id="btn-tab-prep">
+                    <i class="fa-solid fa-clipboard-list"></i> 1. Preparação & Orientação
+                </button>
+                <button class="nav-btn" data-tab="simulator" id="btn-tab-sim">
+                    <i class="fa-solid fa-circle-play"></i> 2. Simulador do Exame
+                </button>
+                <button class="nav-btn" data-tab="lab-curvas" id="btn-tab-lab">
+                    <i class="fa-solid fa-chart-line"></i> 3. Laboratório de Curvas
+                </button>
+                <button class="nav-btn" data-tab="quiz" id="btn-tab-quiz">
+                    <i class="fa-solid fa-graduation-cap"></i> 4. Quiz / Flashcards
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <p>Desenvolvido para Estudos</p>
+                <small>Imitanciometria e Reflexos</small>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-main-content">
+            
+            <!-- TAB 1: PREPARATION & ORIENTATION -->
+            <section id="prep-orientation" class="tab-content active">
+                <div class="header-section">
+                    <h2>Preparação Inicial & Orientação</h2>
+                    <p>Etapas fundamentais que antecedem a execução técnica do exame.</p>
+                </div>
+                
+                <div class="grid-layout">
+                    <!-- card 1: preparação inicial -->
+                    <div class="card glassmorphic">
+                        <div class="card-header pink-accent">
+                            <i class="fa-solid fa-toolbox"></i>
+                            <h3>1. Preparação Inicial</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="study-list">
+                                <li>
+                                    <span class="step-num">A</span>
+                                    <div>
+                                        <strong>Realizar a Meatoscopia:</strong>
+                                        <p>Avaliar o conduto auditivo externo antes de inserir qualquer objeto.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="step-num">B</span>
+                                    <div>
+                                        <strong>Escolher a Oliva:</strong>
+                                        <p>Selecione uma oliva adequada para o diâmetro do conduto do paciente.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="step-num">C</span>
+                                    <div>
+                                        <strong>Ajuste Perfeito:</strong>
+                                        <p>A oliva deve vedar perfeitamente para permitir a variação de pressão.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            
+                            <div class="alert-box caution">
+                                <div class="alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                <div class="alert-text">
+                                    <strong>Contraindicações Clínicas:</strong>
+                                    <p>Não realizar o exame se houver perfuração timpânica, excesso de cera ou cirurgia otológica recente.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- card 2: orientação ao paciente -->
+                    <div class="card glassmorphic">
+                        <div class="card-header violet-accent">
+                            <i class="fa-solid fa-comments"></i>
+                            <h3>2. Orientação ao Paciente & Equipamento</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="study-list">
+                                <li>
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <strong>Explicar o Procedimento:</strong>
+                                        <p>Explique com clareza para reduzir a ansiedade do paciente.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <strong>Instruções de Silêncio:</strong>
+                                        <p>Não falar, se mexer ou engolir. Isso altera a pressão da orelha média e distorce os resultados.</p>
+                                    </div>
+                                </li>
+                            </ul>
+
+                            <div class="quote-box">
+                                <i class="fa-solid fa-quote-left quote-icon"></i>
+                                <p>"Agora, irei realizar um exame. Não vai doer, mas você vai sentir uma pressão e ouvir um barulho. Não precisa responder ou fazer nada, apenas ficar parado."</p>
+                            </div>
+
+                            <div class="equipment-positioning">
+                                <h4><i class="fa-solid fa-headphones-simple"></i> Posicionamento do Equipamento:</h4>
+                                <ul>
+                                    <li>Prender o grampo da sonda na roupa do paciente para evitar que puxe.</li>
+                                    <li>Colocar a sonda no ouvido que deseja testar primeiro.</li>
+                                    <li>Colocar o fone de reflexo na orelha oposta (teste contralateral).</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: INTERACTIVE SIMULATOR -->
+            <section id="simulator" class="tab-content">
+                <div class="header-section">
+                    <h2>Simulador Interativo do Imitanciômetro</h2>
+                    <p>Pratique a ordem de cliques no aparelho passo a passo.</p>
+                </div>
+
+                <div class="simulator-layout">
+                    <!-- Instruções e Progresso Lateral -->
+                    <div class="sim-instructions-panel glassmorphic">
+                        <div class="progress-bar-container">
+                            <div class="progress-fill" id="sim-progress-fill" style="width: 8.33%;"></div>
+                            <span class="progress-text" id="sim-progress-text">Passo 1 de 12</span>
+                        </div>
+
+                        <div class="instruction-card">
+                            <h3 id="step-title">Passo 1: Iniciar Timpanometria</h3>
+                            <p id="step-description">Para iniciar o procedimento, precisamos apertar o botão correspondente a "Tymp" (Timpanometria) no menu principal do imitanciômetro.</p>
+                            
+                            <div class="clinical-note" id="step-note">
+                                <i class="fa-solid fa-lightbulb"></i>
+                                <span>Certifique-se sempre de que a vedação da oliva no conduto está adequada ("Verificar a vedação" e selecionar "orelha média" no aparelho).</span>
+                            </div>
+                        </div>
+
+                        <div class="sim-controls">
+                            <button id="btn-prev-step" class="btn btn-secondary" disabled><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+                            <button id="btn-restart-sim" class="btn btn-danger"><i class="fa-solid fa-rotate-left"></i> Reiniciar</button>
+                            <button id="btn-next-step" class="btn btn-primary" style="display:none;">Avançar <i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Dispositivo Simulado -->
+                    <div class="device-column">
+                        <div class="device-mockup">
+                            <div class="device-body">
+                                <div class="device-screen-bezel">
+                                    <div class="device-screen" id="device-screen">
+                                        <!-- Header da Tela -->
+                                        <div class="screen-header">
+                                            <span class="device-brand">PATH MEDICAL</span>
+                                            <span class="screen-time" id="screen-time">11:17</span>
+                                            <span class="battery-icon"><i class="fa-solid fa-battery-three-quarters"></i></span>
+                                        </div>
+
+                                        <!-- Conteúdo da Tela Dinâmico -->
+                                        <div class="screen-content" id="screen-content">
+                                            <!-- Inserido dinamicamente via JS -->
+                                        </div>
+                                    </div>
+                                    <!-- Indicação de Clique / Ajuda -->
+                                    <div class="click-hint" id="click-hint">Clique aqui!</div>
+                                </div>
+                                <div class="device-brand-logo">SENTI</div>
+                            </div>
+                        </div>
+                        <div class="device-info-bar">
+                            <span class="status-indicator" id="device-status"><span class="dot active"></span> Conectado</span>
+                            <span class="action-alert" id="device-alert">Aguardando ação...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: CURVE LAB (LABORATÓRIO DE CURVAS) -->
+            <section id="lab-curvas" class="tab-content">
+                <div class="header-section">
+                    <h2>Laboratório de Curvas Timpanométricas</h2>
+                    <p>Mova os controles deslizantes para ver como a pressão e a complacência definem os tipos de curvas de Jerger.</p>
+                </div>
+
+                <div class="grid-layout">
+                    <!-- Controles e Configuração -->
+                    <div class="card glassmorphic">
+                        <div class="card-header pink-accent">
+                            <i class="fa-solid fa-sliders"></i>
+                            <h3>Parâmetros da Curva</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Pressão Slider -->
+                            <div class="slider-group">
+                                <div class="slider-info">
+                                    <span class="label">Pressão da Orelha Média:</span>
+                                    <span class="val-display" id="val-pressao">0 daPa</span>
+                                </div>
+                                <input type="range" id="slider-pressao" min="-300" max="150" value="0" step="5">
+                                <div class="slider-limits">
+                                    <span>-300 daPa</span>
+                                    <span>Norma: +50 a -100 daPa</span>
+                                    <span>+150 daPa</span>
+                                </div>
+                            </div>
+
+                            <!-- Complacência Slider -->
+                            <div class="slider-group">
+                                <div class="slider-info">
+                                    <span class="label">Complacência (Volume de Pico):</span>
+                                    <span class="val-display" id="val-complacencia">0.80 mL</span>
+                                </div>
+                                <input type="range" id="slider-complacencia" min="0.0" max="3.0" value="0.8" step="0.05">
+                                <div class="slider-limits">
+                                    <span>0.0 mL</span>
+                                    <span>Norma: 0.3 a 1.65 mL</span>
+                                    <span>3.0 mL</span>
+                                </div>
+                            </div>
+
+                            <div class="quick-presets">
+                                <h4>Atalhos Rápidos (Curvas Típicas):</h4>
+                                <div class="preset-buttons">
+                                    <button class="preset-btn" data-pres="A">Tipo A (Normal)</button>
+                                    <button class="preset-btn" data-pres="As">Tipo Ar/As (Rígida)</button>
+                                    <button class="preset-btn" data-pres="Ad">Tipo Ad (Flácida)</button>
+                                    <button class="preset-btn" data-pres="B">Tipo B (Plana)</button>
+                                    <button class="preset-btn" data-pres="C">Tipo C (Disb. Tubária)</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visualização e Classificação -->
+                    <div class="card glassmorphic">
+                        <div class="card-header violet-accent">
+                            <i class="fa-solid fa-chart-area"></i>
+                            <h3>Resultado do Exame</h3>
+                        </div>
+                        <div class="card-body result-card-body">
+                            <!-- Gráfico SVG Interativo -->
+                            <div class="graph-container">
+                                <svg id="curve-graph" viewBox="0 0 400 300">
+                                    <!-- Eixos e Linhas guia -->
+                                    <line x1="50" y1="250" x2="380" y2="250" class="graph-axis" />
+                                    <line x1="200" y1="20" x2="200" y2="250" class="graph-grid-center" />
+                                    <line x1="50" y1="20" x2="50" y2="250" class="graph-axis" />
+                                    
+                                    <!-- Marcações Eixo Y (Complacência) -->
+                                    <text x="40" y="250" class="graph-lbl">0</text>
+                                    <text x="40" y="173" class="graph-lbl">1.0</text>
+                                    <text x="40" y="96" class="graph-lbl">2.0</text>
+                                    <text x="40" y="25" class="graph-lbl">3.0</text>
+                                    
+                                    <!-- Marcações Eixo X (Pressão) -->
+                                    <text x="50" y="270" class="graph-lbl-x">-300</text>
+                                    <text x="125" y="270" class="graph-lbl-x">-150</text>
+                                    <text x="200" y="270" class="graph-lbl-x">0</text>
+                                    <text x="275" y="270" class="graph-lbl-x">+150</text>
+                                    <text x="350" y="270" class="graph-lbl-x">+300</text>
+                                    
+                                    <!-- Zona de Normalidade (Retângulo) -->
+                                    <rect x="150" y="123" width="75" height="104" class="normality-zone" />
+                                    <text x="155" y="140" class="normality-text">Zona Normal</text>
+                                    
+                                    <!-- Curva Timpanométrica -->
+                                    <path id="graph-curve-path" d="" class="graph-curve" />
+                                    
+                                    <!-- Ponto de Pico -->
+                                    <circle id="graph-peak-dot" cx="200" cy="188" r="6" class="graph-peak" />
+                                </svg>
+                            </div>
+
+                            <!-- Classificação Dinâmica -->
+                            <div class="classification-output">
+                                <div class="badge-type" id="class-badge">Tipo A</div>
+                                <div class="details-panel">
+                                    <div class="detail-item">
+                                        <strong>Interpretação Clínica:</strong>
+                                        <span id="class-interpretacao">Sistema móvel e pressão preservada.</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Observação Clínica:</strong>
+                                        <span id="class-obs">Pico centrado ao redor de 0 daPa com altura e mobilidade normais do sistema tímpano-ossicular.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: QUIZ / FLASHCARDS -->
+            <section id="quiz" class="tab-content">
+                <div class="header-section">
+                    <h2>Quiz e Flashcards de Fixação</h2>
+                    <p>Teste sua memória sobre os passos do imitanciômetro e as classificações de Jerger.</p>
+                </div>
+
+                <div class="quiz-container">
+                    <!-- Opções de Modo do Quiz -->
+                    <div id="quiz-setup" class="quiz-setup-panel glassmorphic">
+                        <h3>Selecione o modo de treino:</h3>
+                        <div class="quiz-modes-grid">
+                            <button class="quiz-mode-card" data-mode="curves">
+                                <i class="fa-solid fa-chart-pie"></i>
+                                <h4>Curvas e Valores</h4>
+                                <p>Adivinhe o Tipo de Curva com base na Pressão, Complacência ou Interpretação Clínica.</p>
+                            </button>
+                            <button class="quiz-mode-card" data-mode="steps">
+                                <i class="fa-solid fa-arrow-down-1-9"></i>
+                                <h4>Passo a Passo do Exame</h4>
+                                <p>Ordene e identifique as etapas de execução do imitanciômetro.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Painel de Jogo -->
+                    <div id="quiz-play" class="quiz-play-panel glassmorphic" style="display: none;">
+                        <div class="quiz-header">
+                            <span class="quiz-score">Pontuação: <strong id="score-val">0</strong>/10</span>
+                            <span class="quiz-progress">Pergunta: <strong id="question-num">1</strong>/10</span>
+                        </div>
+
+                        <div class="question-box">
+                            <h3 id="question-text">Pergunta do Quiz</h3>
+                            <!-- Opcional: Mini Gráfico do Quiz -->
+                            <div id="quiz-graph-preview" class="quiz-graph-preview" style="display:none;">
+                                <svg width="150" height="100" id="mini-graph" viewBox="0 0 200 150">
+                                    <line x1="20" y1="130" x2="180" y2="130" stroke="#ccc" stroke-width="1.5"/>
+                                    <line x1="100" y1="10" x2="100" y2="130" stroke="#eee" stroke-dasharray="2" />
+                                    <path id="mini-curve" d="" fill="none" stroke="#e91e63" stroke-width="3" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="options-grid" id="quiz-options">
+                            <!-- Inserido dinamicamente via JS -->
+                        </div>
+
+                        <div class="feedback-area" id="quiz-feedback">
+                            <!-- Feedback de acerto/erro -->
+                        </div>
+
+                        <div class="quiz-footer">
+                            <button id="btn-exit-quiz" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i> Sair do Quiz</button>
+                            <button id="btn-next-question" class="btn btn-primary" style="display: none;">Próxima <i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Tela de Resultados do Quiz -->
+                    <div id="quiz-results" class="quiz-results-panel glassmorphic" style="display: none;">
+                        <div class="results-badge"><i class="fa-solid fa-trophy"></i></div>
+                        <h2>Treino Concluído!</h2>
+                        <p>Você acertou <strong id="final-correct">0</strong> de 10 perguntas (<strong id="final-percent">0%</strong>).</p>
+                        
+                        <div class="results-feedback" id="results-message">
+                            Parabéns! Excelente domínio do assunto.
+                        </div>
+
+                        <div class="results-actions">
+                            <button id="btn-retry-quiz" class="btn btn-primary"><i class="fa-solid fa-rotate-left"></i> Jogar Novamente</button>
+                            <button id="btn-back-setup" class="btn btn-secondary"><i class="fa-solid fa-list-ul"></i> Escolher Outro Modo</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
