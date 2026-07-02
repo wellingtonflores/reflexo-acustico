@@ -134,18 +134,7 @@
                 </div>
             </section>
 
-            <!-- TAB 2: INTERACTIVE SIMULATOR -->
             <section id="simulator" class="tab-content">
-                <!-- Controles Flutuantes do Modo Aparelho (iPad) -->
-                <div class="device-only-controls">
-                    <button id="btn-exit-device-mode" class="btn btn-secondary floating-btn">
-                        <i class="fa-solid fa-chevron-left"></i> Voltar ao Menu
-                    </button>
-                    <button id="btn-restart-device" class="btn btn-secondary floating-btn">
-                        <i class="fa-solid fa-rotate-left"></i> Reiniciar Aparelho
-                    </button>
-                </div>
-
                 <div class="header-section">
                     <h2>Simulador Interativo do Imitanciômetro</h2>
                     <p>Pratique a ordem de cliques no aparelho passo a passo.</p>
@@ -170,7 +159,7 @@
                         </div>
 
                         <div class="sim-controls">
-                            <button id="btn-prev-step" class="btn btn-secondary" disabled><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+                            <button id="btn-prev-step" class="btn btn-secondary" style="display: none;" disabled><i class="fa-solid fa-chevron-left"></i> Anterior</button>
                             <button id="btn-restart-sim" class="btn btn-danger"><i class="fa-solid fa-rotate-left"></i> Reiniciar</button>
                             <button id="btn-next-step" class="btn btn-primary" style="display:none;">Avançar <i class="fa-solid fa-chevron-right"></i></button>
                         </div>
@@ -178,6 +167,18 @@
 
                     <!-- Dispositivo Simulado -->
                     <div class="device-column">
+                        <!-- Barra de Controle do Simulador (Voltar Menu, Passo Anterior, Reiniciar) -->
+                        <div class="simulator-controls-bar">
+                            <button id="btn-back-menu" class="btn btn-secondary">
+                                <i class="fa-solid fa-arrow-left"></i> Voltar ao Menu
+                            </button>
+                            <button id="btn-prev-step-sim" class="btn btn-secondary" style="display: none;" disabled>
+                                <i class="fa-solid fa-chevron-left"></i> Voltar Etapa
+                            </button>
+                            <button id="btn-restart-sim-device" class="btn btn-danger">
+                                <i class="fa-solid fa-rotate-left"></i> Reiniciar Aparelho
+                            </button>
+                        </div>
                         <div class="device-mockup">
                             <div class="device-body">
                                 <div class="device-screen-bezel">

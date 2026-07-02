@@ -28,6 +28,11 @@ function initTabs() {
                 }
             });
 
+            // Reset simulator to Step 1 when leaving the simulator tab
+            if (tabId !== 'simulator') {
+                loadStep(1);
+            }
+
             // Toggle simulator-only full device mode for iPad
             if (tabId === 'simulator') {
                 document.body.classList.add('device-only-active');
@@ -46,6 +51,19 @@ function initTabs() {
     const exitBtn = document.getElementById('btn-exit-device-mode');
     if (exitBtn) {
         exitBtn.addEventListener('click', () => {
+            loadStep(1); // RESET process!
+            const prepTabBtn = document.getElementById('btn-tab-prep');
+            if (prepTabBtn) {
+                prepTabBtn.click();
+            }
+        });
+    }
+
+    // New Back to Menu button inside the simulator top bar
+    const backMenuBtn = document.getElementById('btn-back-menu');
+    if (backMenuBtn) {
+        backMenuBtn.addEventListener('click', () => {
+            loadStep(1); // RESET process!
             const prepTabBtn = document.getElementById('btn-tab-prep');
             if (prepTabBtn) {
                 prepTabBtn.click();
@@ -67,35 +85,103 @@ let alternativeScreenActive = false;
 let savedPreAlternativeStep = null;
 let subStep = 0;
 let currentTestResults = null;
+let selectedEar = 'esquerdo';
+let currentReflexView = 'contra'; // 'ipsi' or 'contra'
+let ipsiMeasuredFreqs = [];
+let contraMeasuredFreqs = [];
+
+function generateTestResultsForEar(ear) {
+    if (ear === 'esquerdo') {
+        // Curve Type: A, As, or Ad randomly
+        const types = ['A', 'As', 'Ad'];
+        const chosenType = types[Math.floor(Math.random() * 3)];
+        
+        // Pressure between -99 and +50
+        const peakPress = Math.round(-99 + Math.random() * 149);
+        
+        let peakVal;
+        if (chosenType === 'A') {
+            // 0.30 to 1.65
+            peakVal = (0.30 + Math.random() * (1.65 - 0.30)).toFixed(2);
+        } else if (chosenType === 'Ad') {
+            // > 1.65 up to 2.00
+            peakVal = (1.66 + Math.random() * (2.00 - 1.66)).toFixed(2);
+        } else { // As
+            // < 0.30 down to 0.05
+            peakVal = (0.05 + Math.random() * (0.29 - 0.05)).toFixed(2);
+        }
+        
+        const ecv = (0.6 + Math.random() * 0.4).toFixed(2); // e.g. 0.65 to 1.00
+        const tw = Math.round(80 + Math.random() * 40); // e.g. 80 to 120 daPa
+        
+        // Ipsi Left: 500: 80, 1000: 85, 2000: 85, 4000: 80
+        const ipsi = {
+            500: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 80 },
+            1000: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 85 },
+            2000: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 85 },
+            4000: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 80 }
+        };
+        
+        // Contra Right (measured in Left): 500: 85, 1000: 85, 2000: 90, 4000: 80
+        const contra = {
+            500: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 85 },
+            1000: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 85 },
+            2000: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 90 },
+            4000: { amp: (0.03 + Math.random() * 0.04).toFixed(2), db: 80 }
+        };
+        
+        currentTestResults = {
+            ear: 'esquerdo',
+            type: chosenType, // A, As, or Ad
+            ecv,
+            tw,
+            peakVal,
+            peakPress,
+            ipsi,
+            contra
+        };
+    } else {
+        // Direito: randomize data (invented values)
+        const ecv = (0.6 + Math.random() * 0.6).toFixed(2);
+        const peakVal = (0.1 + Math.random() * 1.8).toFixed(2);
+        const peakPress = Math.round(-150 + Math.random() * 200);
+        const tw = Math.round(70 + Math.random() * 60);
+        
+        let type = 'A';
+        if (peakPress < -100) type = 'C';
+        else if (peakPress > 50) type = 'C';
+        else if (peakVal < 0.3) type = 'As';
+        else if (peakVal > 1.65) type = 'Ad';
+        
+        const freqs = [500, 1000, 2000, 4000];
+        const ipsi = {};
+        const contra = {};
+        
+        freqs.forEach(freq => {
+            const ipsiAmp = (0.03 + Math.random() * 0.05).toFixed(2);
+            const contraAmp = (0.03 + Math.random() * 0.05).toFixed(2);
+            const ipsiDb = [70, 75, 80, 85, 90][Math.floor(Math.random() * 5)];
+            const contraDb = [75, 80, 85, 90, 95][Math.floor(Math.random() * 5)];
+            
+            ipsi[freq] = { amp: ipsiAmp, db: ipsiDb };
+            contra[freq] = { amp: contraAmp, db: contraDb };
+        });
+        
+        currentTestResults = {
+            ear: 'direito',
+            type,
+            ecv,
+            tw,
+            peakVal,
+            peakPress,
+            ipsi,
+            contra
+        };
+    }
+}
 
 function generateRandomTestResults() {
-    const ecv = (0.6 + Math.random() * 0.6).toFixed(2);
-    const peakVal = (0.2 + Math.random() * 0.5).toFixed(2);
-    const peakPress = Math.round(-60 + Math.random() * 80);
-    const tw = Math.round(80 + Math.random() * 40);
-
-    const freqs = [500, 1000, 2000, 4000];
-    const ipsi = {};
-    const contra = {};
-
-    freqs.forEach(freq => {
-        const ipsiAmp = (0.03 + Math.random() * 0.05).toFixed(2);
-        const contraAmp = (0.03 + Math.random() * 0.05).toFixed(2);
-        const ipsiDb = [75, 80, 85, 90][Math.floor(Math.random() * 4)];
-        const contraDb = [80, 85, 90, 95][Math.floor(Math.random() * 4)];
-
-        ipsi[freq] = { amp: ipsiAmp, db: ipsiDb };
-        contra[freq] = { amp: contraAmp, db: contraDb };
-    });
-
-    currentTestResults = {
-        ecv,
-        tw,
-        peakVal,
-        peakPress,
-        ipsi,
-        contra
-    };
+    generateTestResultsForEar(selectedEar);
 }
 
 function getTympCurvePath(peakPress, peakVal) {
@@ -104,8 +190,8 @@ function getTympCurvePath(peakPress, peakVal) {
         const percent = i / 100;
         const P = -200 + percent * 400;
         const compliance = (peakVal - 0.05) * Math.exp(-Math.pow((P - peakPress) / 75, 2)) + 0.05;
-        const svgX = 30 + percent * 215;
-        const svgY = 148 - (compliance / 3.0) * 133;
+        const svgX = 28 + percent * 217;
+        const svgY = 148 - (compliance / 2.0) * 133;
         if (i === 0) {
             d += `M ${svgX},${svgY}`;
         } else {
@@ -192,46 +278,77 @@ const simSteps = {
                     </div>
                 </div>`;
             }
-            return `<div class="screen-plot-container" style="padding:0;">
-                <div class="tymp-result-header">
+            
+            const ecv = currentTestResults ? currentTestResults.ecv : '0.75';
+            const tw = currentTestResults ? currentTestResults.tw : '107';
+            const peakVal = currentTestResults ? currentTestResults.peakVal : '0.26';
+            const peakPress = currentTestResults ? currentTestResults.peakPress : '-25';
+            const type = currentTestResults ? currentTestResults.type : 'As';
+            const curveColor = selectedEar === 'esquerdo' ? '#2563eb' : '#ef4444';
+
+            return `<div class="screen-plot-container" style="padding:0; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
+                <div class="tymp-result-header" style="display:flex; justify-content:space-between; padding: 1.5cqw 2cqw; font-size:2.8cqw; border-bottom:1px solid #cbd5e1; background:#f1f5f9;">
                     <span style="font-weight:700; color:#1e293b;">YBG</span>
                     <span style="color:#64748b;">226 Hz Ytm</span>
                 </div>
-                <div class="screen-plot-chart" style="flex-grow:1;">
-                    <svg class="screen-plot-svg" viewBox="0 0 260 180" preserveAspectRatio="xMidYMid meet">
-                        <text x="25" y="18" font-size="7" fill="#94a3b8" text-anchor="end">3.0</text>
-                        <text x="25" y="44" font-size="7" fill="#94a3b8" text-anchor="end">2.4</text>
-                        <text x="25" y="70" font-size="7" fill="#94a3b8" text-anchor="end">1.8</text>
-                        <text x="25" y="97" font-size="7" fill="#94a3b8" text-anchor="end">1.2</text>
-                        <text x="25" y="123" font-size="7" fill="#94a3b8" text-anchor="end">0.6</text>
-                        <text x="25" y="150" font-size="7" fill="#94a3b8" text-anchor="end">0</text>
-                        <text x="15" y="170" font-size="6" fill="#94a3b8">ml</text>
-                        <line x1="30" y1="15" x2="30" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
-                        <line x1="30" y1="148" x2="245" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
-                        <text x="30" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">-200</text>
-                        <text x="84" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">-100</text>
-                        <text x="138" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">0</text>
-                        <text x="191" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">100</text>
-                        <text x="245" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">200</text>
-                        <text x="138" y="173" font-size="6" fill="#94a3b8" text-anchor="middle">daPa</text>
-                        <line x1="30" y1="15" x2="245" y2="15" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="30" y1="41" x2="245" y2="41" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="30" y1="67" x2="245" y2="67" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="30" y1="93" x2="245" y2="93" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="30" y1="119" x2="245" y2="119" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="84" y1="15" x2="84" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="138" y1="15" x2="138" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <line x1="191" y1="15" x2="191" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                        <rect x="112" y="80" width="50" height="42" fill="rgba(16,185,129,0.05)" stroke="rgba(16,185,129,0.25)" stroke-width="0.5" stroke-dasharray="3"/>
-                        <path id="live-curve" d="" fill="none" stroke="#dc2626" stroke-width="1.5"/>
-                        <circle id="peak-marker" cx="0" cy="0" r="2.5" fill="#0284c7" style="display:none;"/>
+                <div class="screen-plot-chart" style="flex-grow:1; display:flex; justify-content:center; align-items:center; padding:1cqw;">
+                    <svg class="screen-plot-svg" viewBox="0 0 260 180" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto;">
+                        <!-- Ticks & labels Y-axis (max 2.0 ml) -->
+                        <text x="23" y="18" font-size="7" fill="#64748b" text-anchor="end">2.0</text>
+                        <text x="23" y="26" font-size="6" fill="#94a3b8" text-anchor="end">ml</text>
+                        <text x="23" y="45" font-size="7" fill="#94a3b8" text-anchor="end">1.6</text>
+                        <text x="23" y="71" font-size="7" fill="#94a3b8" text-anchor="end">1.2</text>
+                        <text x="23" y="98" font-size="7" fill="#94a3b8" text-anchor="end">0.8</text>
+                        <text x="23" y="124" font-size="7" fill="#94a3b8" text-anchor="end">0.4</text>
+                        
+                        <line x1="28" y1="15" x2="28" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
+                        <line x1="28" y1="148" x2="245" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
+                        
+                        <!-- Ticks & labels X-axis -->
+                        <text x="28" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">-200</text>
+                        <text x="82" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">-100</text>
+                        <text x="137" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">0</text>
+                        <text x="191" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">100</text>
+                        <text x="245" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">200</text>
+                        <text x="245" y="170" font-size="6" fill="#64748b" text-anchor="end">daPa</text>
+                        
+                        <!-- Grid lines -->
+                        <line x1="28" y1="15" x2="245" y2="15" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        <line x1="28" y1="42" x2="245" y2="42" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        <line x1="28" y1="68" x2="245" y2="68" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        <line x1="28" y1="95" x2="245" y2="95" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        <line x1="28" y1="121" x2="245" y2="121" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        
+                        <line x1="82" y1="15" x2="82" y2="148" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        <line x1="137" y1="15" x2="137" y2="148" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        <line x1="191" y1="15" x2="191" y2="148" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                        
+                        <!-- Normality Box -->
+                        <rect x="82" y="38" width="83" height="90" fill="rgba(16,185,129,0.05)" stroke="rgba(16,185,129,0.25)" stroke-width="0.5" stroke-dasharray="3"/>
+                        
+                        <!-- Volume bar indicator on vertical axis -->
+                        <line id="live-volume-bar" x1="28" y1="148" x2="28" y2="148" stroke="${curveColor}" stroke-width="3" opacity="0.9"/>
+                        
+                        <path id="live-curve" d="" fill="none" stroke="${curveColor}" stroke-width="1.5"/>
+                        <circle id="peak-marker" cx="0" cy="0" r="2.5" fill="${curveColor}" style="display:none;"/>
                     </svg>
                 </div>
-                <div id="tymp-result-bar" style="display:none; font-size:2.2cqw; padding:1cqw 2cqw; background:#f8fafc; border-top:1px solid #e2e8f0;">
-                    ECV: <strong id="res-ecv">0.75</strong> ml &nbsp; TW: <strong id="res-tw">107</strong> daPa &nbsp; Peak: <strong id="res-peak">0.26</strong> ml / <strong id="res-press">-25</strong> daPa
-                </div>
-                <div id="tymp-status-bar" class="screen-bottom-bar" style="justify-content:center; font-size:2.2cqw;">
-                    <span class="screen-icon-indicator"><i class="fa-solid fa-spinner fa-spin"></i> Medindo...</span>
+                
+                <!-- Completed Result Bar & Footer (fixed on screen from start) -->
+                <div style="width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:1.5cqw 3cqw; background:#f8fafc; border-top:1px solid #cbd5e1; font-family: monospace; font-size:2.8cqw; line-height: 1.4;">
+                        <div style="color: #1e293b;">
+                            ECV: <strong>${ecv}</strong> ml - TW: <strong>${tw}</strong> daPa<br>
+                            Peak: <strong>${peakVal}</strong> ml / <strong>${peakPress}</strong> daPa
+                        </div>
+                    </div>
+                    
+                    <div class="device-screen-footer" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; border-top: 1px solid #cbd5e1; padding: 1.5cqw 0; width:100%;">
+                        <div class="device-soft-btn active-target" id="btn-device-soft-back" style="font-size: 4cqw; color: #22c55e; cursor: pointer; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-left-long"></i></div>
+                        <div class="device-soft-btn" style="font-size: 4cqw; color: #94a3b8; padding: 1cqw 3cqw;"><i class="fa-regular fa-comment"></i></div>
+                        <div class="device-soft-btn" style="font-size: 4cqw; color: #475569; padding: 1cqw 3cqw;"><i class="fa-solid fa-print"></i></div>
+                        <div class="device-soft-btn" style="font-size: 4cqw; color: #3b82f6; padding: 1cqw 3cqw;"><i class="fa-solid fa-circle-info"></i></div>
+                    </div>
                 </div>
             </div>`;
         }
@@ -258,7 +375,7 @@ const simSteps = {
                     </div>
                 </div>`;
             }
-            return getReflexScreenHTML('ipsi', true);
+            return getReflexScreenHTML('ipsi', true, 500);
         }
     },
     6: {
@@ -286,69 +403,138 @@ const simSteps = {
         getScreenHTML: () => getReflexScreenHTML('contra-done', false)
     },
     9: {
-        title: "Passo 9: Reveja a timpanometria e anote os resultados",
-        description: "Selecione a gravação \"Tymp226\" no histórico para visualizar a curva e anotar os valores de ECV, Peak e TW.",
-        note: "Parabéns! Anote os valores e desenhe a curva no prontuário do paciente.",
-        targetSelector: "#btn-tymp226-log",
-        alertText: "Selecione 'Tymp226' para rever os resultados.",
+        title: "Passo 9: Reveja os exames e finalize o estudo",
+        description: "Selecione Tymp226 ou Reflexo para rever os exames se desejar. Ao terminar, clique em 'Finalizar Estudo' no visor.",
+        note: "Parabéns! Você concluiu com sucesso todo o protocolo de exames.",
+        targetSelector: "#btn-complete-sim",
+        alertText: "Clique em 'Finalizar Estudo' no visor para concluir a simulação.",
         getScreenHTML: () => `
-            <div class="screen-title">Histórico de Exames</div>
-            <div class="history-list-wrapper" style="flex-grow:1; display:flex; flex-direction:column; overflow-y:auto; padding:2px;">
-                <div class="screen-btn active-target history-item-btn" id="btn-tymp226-log" style="flex-direction:row; justify-content:space-between;">
-                    <span>Tymp226 (11:18)</span>
-                    <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
+            <div class="history-screen" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; background:#fff;">
+                <div class="screen-title" style="font-size:3.5cqw; font-weight:700; padding:1.5cqw 2cqw; background:#f8fafc; border-bottom:1px solid #cbd5e1; text-align:center; color:#1e293b;">Histórico de Exames</div>
+                <div class="history-list-wrapper" style="flex-grow:1; display:flex; flex-direction:column; overflow-y:auto; padding:3cqw; gap:2cqw;">
+                    <div class="screen-btn active-target history-item-btn" id="btn-tymp226-log" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center; padding:2.5cqw; border:1px solid #cbd5e1; border-radius:1cqw; cursor:pointer;">
+                        <span>Tymp226 (11:18)</span>
+                        <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
+                    </div>
+                    <div class="screen-btn history-item-btn" id="btn-reflex-log" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center; padding:2.5cqw; border:1px solid #cbd5e1; border-radius:1cqw; cursor:pointer;">
+                        <span>Reflexo (11:21)</span>
+                        <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
+                    </div>
                 </div>
-                <div class="screen-btn history-item-btn" style="flex-direction:row; justify-content:space-between;">
-                    <span>Reflexo (11:21)</span>
-                    <i class="fa-solid fa-circle-check" style="color:var(--success)"></i>
+                
+                <div style="display:flex; justify-content:center; padding:1.5cqw 0; background:#f1f5f9; border-top:1px solid #cbd5e1; width:100%;">
+                    <button class="screen-btn active-target" id="btn-complete-sim" style="background:var(--pink-primary); color:#fff; border:none; width:80%; padding:1.8cqw; border-radius:1cqw; font-size:3cqw; font-weight:bold;">Finalizar Estudo</button>
+                </div>
+                
+                <div class="device-screen-footer" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; border-top: 1px solid #cbd5e1; padding: 1.5cqw 0; width:100%;">
+                    <div class="device-soft-btn active-target" id="btn-device-soft-back" style="font-size: 4cqw; color: #22c55e; cursor: pointer; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-left-long"></i></div>
+                    <div class="device-soft-btn" style="font-size: 4cqw; color: #94a3b8; padding: 1cqw 3cqw;"><i class="fa-regular fa-comment"></i></div>
+                    <div class="device-soft-btn" style="font-size: 4cqw; color: #475569; padding: 1cqw 3cqw;"><i class="fa-solid fa-print"></i></div>
+                    <div class="device-soft-btn" style="font-size: 4cqw; color: #3b82f6; padding: 1cqw 3cqw;"><i class="fa-solid fa-circle-info"></i></div>
                 </div>
             </div>
         `
     }
 };
 
-// Helper: generates the unified reflex screen HTML
+function getIpsiTraceSVG() {
+    const color = selectedEar === 'esquerdo' ? '#2563eb' : '#ef4444';
+    const freqs = [500, 1000, 2000, 4000];
+    let svg = '';
+    for (let i = 0; i < 4; i++) {
+        const xStart = 20 + i * 25;
+        const yBase = 60 - i * 3;
+        const amp = currentTestResults ? parseFloat(currentTestResults.ipsi[freqs[i]].amp) : 0.05;
+        const deflection = amp * 120;
+        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}" fill="none" stroke="${color}" stroke-width="1" opacity="0.9"/>`;
+    }
+    return svg;
+}
+
+function getContraTraceSVG() {
+    const color = selectedEar === 'esquerdo' ? '#ef4444' : '#2563eb';
+    const freqs = [500, 1000, 2000, 4000];
+    let svg = '';
+    for (let i = 0; i < 4; i++) {
+        const xStart = 20 + i * 25;
+        const yBase = 48 - i * 3;
+        const amp = currentTestResults ? parseFloat(currentTestResults.contra[freqs[i]].amp) : 0.05;
+        const deflection = amp * 120;
+        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}" fill="none" stroke="${color}" stroke-width="1" opacity="0.9"/>`;
+    }
+    return svg;
+}
+
 function getReflexScreenHTML(mode, isAnimating) {
     const ipsiActive = mode === 'ipsi' || mode === 'ipsi-done';
     const contraActive = mode === 'contra-ready' || mode === 'contra-done' || mode === 'contra-anim';
     const ipsiDone = mode === 'ipsi-done' || contraActive;
     const contraDone = mode === 'contra-done';
     const showPlay = mode === 'contra-ready';
-    const showStop = mode === 'contra-done';
 
-    const ipsiToggleClass = ipsiActive && !contraActive ? 'reflex-toggle active' : 'reflex-toggle';
-    const contraToggleClass = contraActive ? 'reflex-toggle active' : 'reflex-toggle';
-    const ipsiDotClass = ipsiActive && !contraActive ? 'reflex-dot active' : 'reflex-dot';
-    const contraDotClass = contraActive ? 'reflex-dot active-contra' : 'reflex-dot';
+    const isIpsi = currentReflexView === 'ipsi';
+
+    const ipsiToggleClass = isIpsi ? 'reflex-toggle active' : 'reflex-toggle';
+    const contraToggleClass = !isIpsi ? 'reflex-toggle active' : 'reflex-toggle';
+    const ipsiDotClass = isIpsi ? 'reflex-dot active' : 'reflex-dot';
+    const contraDotClass = !isIpsi ? 'reflex-dot active-contra' : 'reflex-dot';
 
     const playStyle = showPlay
         ? 'class="screen-small-btn play-btn active-target" id="btn-reflex-play"'
         : 'class="screen-small-btn play-btn" style="opacity:0.4; pointer-events:none;"';
-    const stopStyle = showStop
+    
+    const stopStyle = (mode === 'ipsi' || mode === 'contra-anim' || mode === 'contra-done')
         ? 'class="screen-small-btn stop-btn active-target" id="btn-reflex-stop"'
-        : (mode === 'ipsi' || mode === 'contra-anim'
-            ? 'class="screen-small-btn stop-btn" style="opacity:0.4; pointer-events:none;"'
-            : 'class="screen-small-btn stop-btn"');
+        : 'class="screen-small-btn stop-btn" style="opacity:0.4; pointer-events:none;"';
 
     const checkDisplay = ipsiDone ? '' : 'display:none;';
     const dbDisplay = ipsiDone ? '' : 'display:none;';
     
-    // Read from currentTestResults state
     const ipsiLast = currentTestResults ? currentTestResults.ipsi[4000] : { amp: '0.05', db: '80' };
     const contraLast = currentTestResults ? currentTestResults.contra[4000] : { amp: '0.05', db: '85' };
 
-    const ampText = isAnimating ? '---' : (mode === 'ipsi-done' ? ipsiLast.amp : (contraDone ? contraLast.amp : '---'));
-    const dbText = mode === 'ipsi-done' ? ipsiLast.db : (contraDone ? contraLast.db : '80');
+    const ampText = isAnimating ? '---' : (isIpsi ? ipsiLast.amp : (contraDone ? contraLast.amp : '---'));
+    const dbText = isIpsi ? ipsiLast.db : (contraDone ? contraLast.db : '80');
     const freqText = isAnimating ? '500 Hz' : '4000 Hz';
 
-    return `<div class="reflex-screen">
-        <div class="reflex-header">
+    let controlsHTML = '';
+    if (currentStep !== 9) {
+        controlsHTML = `
+        <div class="reflex-controls" style="display:flex; align-items:center; justify-content:center; gap:2cqw; padding:1.5cqw 2cqw; background:#f8fafc; border-top:1px solid #e2e8f0;">
+            <div ${playStyle}><i class="fa-solid fa-play"></i></div>
+            <div class="screen-small-btn" style="opacity:0.4; pointer-events:none;"><i class="fa-solid fa-forward-step"></i></div>
+            <div ${stopStyle}><i class="fa-solid fa-square"></i></div>
+        </div>`;
+    }
+
+    let footerHTML = '';
+    if (currentStep === 9) {
+        footerHTML = `
+        <div class="device-screen-footer" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; border-top: 1px solid #cbd5e1; padding: 1.5cqw 0; width:100%;">
+            <div class="device-soft-btn active-target" id="btn-device-soft-back" style="font-size: 4cqw; color: #22c55e; cursor: pointer; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-left-long"></i></div>
+            <div class="device-soft-btn" style="font-size: 4cqw; color: #94a3b8; padding: 1cqw 3cqw;"><i class="fa-regular fa-comment"></i></div>
+            <div class="device-soft-btn" style="font-size: 4cqw; color: #475569; padding: 1cqw 3cqw;"><i class="fa-solid fa-print"></i></div>
+            <div class="device-soft-btn" style="font-size: 4cqw; color: #3b82f6; padding: 1cqw 3cqw;"><i class="fa-solid fa-circle-info"></i></div>
+        </div>`;
+    } else {
+        footerHTML = `
+        <div class="device-screen-footer" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; border-top: 1px solid #cbd5e1; padding: 1.5cqw 0; width:100%;">
+            <div class="device-soft-btn active-target" id="btn-device-soft-back" style="font-size: 4cqw; color: #22c55e; cursor: pointer; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-left-long"></i></div>
+            <div class="device-soft-btn" style="font-size: 4cqw; color: #94a3b8; padding: 1cqw 3cqw;"><i class="fa-regular fa-comment"></i></div>
+            <div class="device-soft-btn ${mode === 'contra-done' ? 'active-target' : ''}" id="btn-reflex-save-icon" style="font-size: 4cqw; color: #22c55e; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-down-long"></i></div>
+            <div class="device-soft-btn" style="font-size: 4cqw; color: #475569; padding: 1cqw 3cqw;"><i class="fa-solid fa-print"></i></div>
+            <div class="device-soft-btn" style="font-size: 4cqw; color: #3b82f6; padding: 1cqw 3cqw;"><i class="fa-solid fa-circle-info"></i></div>
+        </div>`;
+    }
+
+    return `<div class="reflex-screen" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; background:#fff;">
+        <div class="reflex-header" style="display:flex; justify-content:space-between; align-items:center; padding:1.5cqw 2cqw; font-size:2.8cqw; background:#f8fafc; border-bottom:1px solid #cbd5e1; color:#1e293b;">
             <span style="font-weight:700;">Reflexo</span>
             <span style="font-size:2cqw; color:#64748b;">1dB</span>
         </div>
-        <div class="reflex-body">
-            <div class="reflex-graph">
-                <svg id="reflex-svg" viewBox="0 0 130 80" preserveAspectRatio="xMidYMid meet">
+        <div class="reflex-body" style="display:flex; flex-grow:1; min-height:0; padding:1cqw;">
+            <div class="reflex-graph" style="flex:1.3; display:flex; align-items:center; justify-content:center;">
+                <svg id="reflex-svg" viewBox="0 0 130 80" preserveAspectRatio="xMidYMid meet" style="width:100%; height:100%;">
                     <text x="14" y="12" font-size="5" fill="#94a3b8" text-anchor="end">0.20</text>
                     <text x="14" y="30" font-size="5" fill="#94a3b8" text-anchor="end">0.15</text>
                     <text x="14" y="48" font-size="5" fill="#94a3b8" text-anchor="end">0.10</text>
@@ -361,115 +547,102 @@ function getReflexScreenHTML(mode, isAnimating) {
                     <line x1="16" y1="72" x2="125" y2="72" stroke="#cbd5e1" stroke-width="0.5"/>
                     <text x="70" y="79" font-size="5" fill="#94a3b8" text-anchor="middle">ttm</text>
                     <g id="reflex-traces">
-                        ${ipsiDone ? getIpsiTraceSVG() : ''}
-                        ${contraDone ? getContraTraceSVG() : ''}
+                        ${(isIpsi && ipsiDone) ? getIpsiTraceSVG() : ''}
+                        ${(!isIpsi && contraDone) ? getContraTraceSVG() : ''}
                     </g>
                 </svg>
             </div>
-            <div class="reflex-info">
-                <div id="reflex-amp" class="reflex-amp-value">${ampText}</div>
-                <div id="reflex-check" class="reflex-check-icon" style="${checkDisplay}"><i class="fa-solid fa-check"></i></div>
-                <div id="reflex-db" class="reflex-db-value" style="${dbDisplay}">${dbText}<br><span class="reflex-db-unit">dB HL</span></div>
+            <div class="reflex-info" style="flex:0.7; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:1.5cqw; padding:1cqw; border-left:1px solid #e2e8f0;">
+                <div id="reflex-amp" class="reflex-amp-value" style="font-size:4cqw; font-weight:700; color:#1e293b;">${ampText}</div>
+                <div id="reflex-check" class="reflex-check-icon" style="${checkDisplay} font-size:6cqw; color:var(--success);"><i class="fa-solid fa-check"></i></div>
+                <div id="reflex-db" class="reflex-db-value" style="${dbDisplay} font-size:4cqw; font-weight:700; color:#1e293b; text-align:center; line-height:1.2;">${dbText}<br><span class="reflex-db-unit" style="font-size:2cqw; font-weight:400; color:#64748b;">dB HL</span></div>
             </div>
         </div>
-        <div class="reflex-toggle-row">
-            <span class="${ipsiToggleClass}" id="btn-ipsi-toggle"><span class="${ipsiDotClass}"></span> ipsi</span>
-            <span class="${contraToggleClass}" id="btn-contra-toggle"><span class="${contraDotClass}"></span> contra</span>
+        <div class="reflex-toggle-row" style="display:flex; align-items:center; gap:4cqw; padding:1.2cqw 2cqw; font-size:2.8cqw; border-top:1px solid #e2e8f0; color:#64748b;">
+            <span class="${ipsiToggleClass} reflex-toggle-btn" id="btn-ipsi-toggle" style="display:flex; align-items:center; gap:1cqw; cursor:pointer;"><span class="${ipsiDotClass}"></span> ipsi</span>
+            <span class="${contraToggleClass} reflex-toggle-btn" id="btn-contra-toggle" style="display:flex; align-items:center; gap:1cqw; cursor:pointer;"><span class="${contraDotClass}"></span> contra</span>
         </div>
-        <div class="reflex-info-row">
+        <div class="reflex-info-row" style="display:flex; justify-content:space-between; align-items:center; padding:1.5cqw 2cqw; font-size:2.5cqw; color:#64748b; border-top:1px solid #e2e8f0;">
             <span><i class="fa-solid fa-volume-high" style="color:var(--pink-primary);"></i> <span id="reflex-freq">${freqText}</span></span>
             <span>-25 daPa</span>
         </div>
-        <div class="reflex-controls">
-            <div ${playStyle}><i class="fa-solid fa-play"></i></div>
-            <div class="screen-small-btn" style="opacity:0.4; pointer-events:none;"><i class="fa-solid fa-forward-step"></i></div>
-            <div ${stopStyle}><i class="fa-solid fa-square"></i></div>
-        </div>
+        ${controlsHTML}
+        
+        ${footerHTML}
     </div>`;
 }
 
-// Helper: SVG traces for completed ipsi reflexes
-function getIpsiTraceSVG() {
-    const colors = ['#22c55e', '#84cc16', '#eab308', '#f97316'];
-    const freqs = [500, 1000, 2000, 4000];
-    let svg = '';
-    for (let i = 0; i < 4; i++) {
-        const xStart = 20 + i * 25;
-        const yBase = 60 - i * 3;
-        const amp = currentTestResults ? parseFloat(currentTestResults.ipsi[freqs[i]].amp) : 0.05;
-        const deflection = amp * 120;
-        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}" fill="none" stroke="${colors[i]}" stroke-width="1" opacity="0.9"/>`;
-    }
-    return svg;
-}
-
-// Helper: SVG traces for completed contra reflexes
-function getContraTraceSVG() {
-    const colors = ['#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1'];
-    const freqs = [500, 1000, 2000, 4000];
-    let svg = '';
-    for (let i = 0; i < 4; i++) {
-        const xStart = 20 + i * 25;
-        const yBase = 48 - i * 3;
-        const amp = currentTestResults ? parseFloat(currentTestResults.contra[freqs[i]].amp) : 0.05;
-        const deflection = amp * 120;
-        svg += `<path d="M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}" fill="none" stroke="${colors[i]}" stroke-width="1" opacity="0.9"/>`;
-    }
-    return svg;
-}
-
-// Helper: final tympanometry result screen with full axes
 function getFinalResultScreenHTML() {
     const peakPress = currentTestResults ? parseFloat(currentTestResults.peakPress) : -25;
     const peakVal = currentTestResults ? parseFloat(currentTestResults.peakVal) : 0.26;
     const ecv = currentTestResults ? currentTestResults.ecv : '0.75';
     const tw = currentTestResults ? currentTestResults.tw : '107';
+    const type = currentTestResults ? currentTestResults.type : 'As';
 
-    const peakX = 30 + ((peakPress + 200) / 400) * 215;
-    const peakY = 148 - (peakVal / 3.0) * 133;
+    const curveColor = selectedEar === 'esquerdo' ? '#2563eb' : '#ef4444';
+
+    const peakX = 28 + ((peakPress + 200) / 400) * 217;
+    const peakY = 148 - (peakVal / 2.0) * 133;
     const curveD = getTympCurvePath(peakPress, peakVal);
 
-    return `<div class="screen-plot-container" style="padding:0;">
-        <div class="tymp-result-header">
+    return `<div class="screen-plot-container" style="padding:0; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
+        <div class="tymp-result-header" style="display:flex; justify-content:space-between; padding: 1.5cqw 2cqw; font-size:2.8cqw; border-bottom:1px solid #cbd5e1; background:#f1f5f9;">
             <span style="font-weight:700; color:#1e293b;">YBG</span>
             <span style="color:#64748b;">226 Hz Ytm</span>
         </div>
-        <div class="screen-plot-chart" style="flex-grow:1;">
-            <svg class="screen-plot-svg" viewBox="0 0 260 180" preserveAspectRatio="xMidYMid meet">
-                <text x="25" y="18" font-size="7" fill="#94a3b8" text-anchor="end">3.0</text>
-                <text x="25" y="44" font-size="7" fill="#94a3b8" text-anchor="end">2.4</text>
-                <text x="25" y="70" font-size="7" fill="#94a3b8" text-anchor="end">1.8</text>
-                <text x="25" y="97" font-size="7" fill="#94a3b8" text-anchor="end">1.2</text>
-                <text x="25" y="123" font-size="7" fill="#94a3b8" text-anchor="end">0.6</text>
-                <text x="25" y="150" font-size="7" fill="#94a3b8" text-anchor="end">0</text>
-                <text x="15" y="170" font-size="6" fill="#94a3b8">ml</text>
-                <line x1="30" y1="15" x2="30" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
-                <line x1="30" y1="148" x2="245" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
-                <text x="30" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">-200</text>
-                <text x="84" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">-100</text>
-                <text x="138" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">0</text>
-                <text x="191" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">100</text>
-                <text x="245" y="160" font-size="6" fill="#94a3b8" text-anchor="middle">200</text>
-                <text x="138" y="173" font-size="6" fill="#94a3b8" text-anchor="middle">daPa</text>
-                <line x1="30" y1="15" x2="245" y2="15" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="30" y1="41" x2="245" y2="41" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="30" y1="67" x2="245" y2="67" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="30" y1="93" x2="245" y2="93" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="30" y1="119" x2="245" y2="119" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="84" y1="15" x2="84" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="138" y1="15" x2="138" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <line x1="191" y1="15" x2="191" y2="148" stroke="#f1f5f9" stroke-width="0.3" stroke-dasharray="2"/>
-                <rect x="112" y="80" width="50" height="42" fill="rgba(16,185,129,0.05)" stroke="rgba(16,185,129,0.25)" stroke-width="0.5" stroke-dasharray="3"/>
-                <path d="${curveD}" fill="none" stroke="#0284c7" stroke-width="1.5"/>
-                <circle cx="${peakX}" cy="${peakY}" r="2.5" fill="#0284c7"/>
+        <div class="screen-plot-chart" style="flex-grow:1; display:flex; justify-content:center; align-items:center; padding:1cqw;">
+            <svg class="screen-plot-svg" viewBox="0 0 260 180" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto;">
+                <text x="23" y="18" font-size="7" fill="#64748b" text-anchor="end">2.0</text>
+                <text x="23" y="26" font-size="6" fill="#94a3b8" text-anchor="end">ml</text>
+                <text x="23" y="45" font-size="7" fill="#94a3b8" text-anchor="end">1.6</text>
+                <text x="23" y="71" font-size="7" fill="#94a3b8" text-anchor="end">1.2</text>
+                <text x="23" y="98" font-size="7" fill="#94a3b8" text-anchor="end">0.8</text>
+                <text x="23" y="124" font-size="7" fill="#94a3b8" text-anchor="end">0.4</text>
+                
+                <line x1="28" y1="15" x2="28" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
+                <line x1="28" y1="148" x2="245" y2="148" stroke="#cbd5e1" stroke-width="0.5"/>
+                
+                <text x="28" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">-200</text>
+                <text x="82" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">-100</text>
+                <text x="137" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">0</text>
+                <text x="191" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">100</text>
+                <text x="245" y="159" font-size="6" fill="#94a3b8" text-anchor="middle">200</text>
+                <text x="245" y="170" font-size="6" fill="#64748b" text-anchor="end">daPa</text>
+                
+                <line x1="28" y1="15" x2="245" y2="15" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                <line x1="28" y1="42" x2="245" y2="42" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                <line x1="28" y1="68" x2="245" y2="68" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                <line x1="28" y1="95" x2="245" y2="95" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                <line x1="28" y1="121" x2="245" y2="121" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                
+                <line x1="82" y1="15" x2="82" y2="148" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                <line x1="137" y1="15" x2="137" y2="148" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                <line x1="191" y1="15" x2="191" y2="148" stroke="#e2e8f0" stroke-width="0.3" stroke-dasharray="2"/>
+                
+                <rect x="82" y="38" width="83" height="90" fill="rgba(16,185,129,0.05)" stroke="rgba(16,185,129,0.25)" stroke-width="0.5" stroke-dasharray="3"/>
+                
+                <!-- Volume bar indicator on vertical axis -->
+                <line x1="28" y1="148" x2="28" y2="${148 - (parseFloat(ecv) / 2.0) * 133}" stroke="${curveColor}" stroke-width="3" opacity="0.9"/>
+                
+                <path d="${curveD}" fill="none" stroke="${curveColor}" stroke-width="1.5"/>
+                <circle cx="${peakX}" cy="${peakY}" r="2.5" fill="${curveColor}"/>
             </svg>
         </div>
-        <div style="font-size:2.2cqw; padding:1.2cqw 2cqw; background:#f8fafc; border-top:1px solid #e2e8f0; line-height:1.6;">
-            ECV: <strong>${ecv}</strong> ml &nbsp; TW: <strong>${tw}</strong> daPa<br>
-            Peak: <strong>${peakVal}</strong> ml / <strong>${peakPress}</strong> daPa
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:1.5cqw 3cqw; background:#f8fafc; border-top:1px solid #cbd5e1; font-family: monospace; font-size:2.8cqw; line-height: 1.4;">
+            <div style="color: #1e293b;">
+                ECV: <strong>${ecv}</strong> ml - TW: <strong>${tw}</strong> daPa<br>
+                Peak: <strong>${peakVal}</strong> ml / <strong>${peakPress}</strong> daPa
+            </div>
         </div>
-        <div style="display:flex; justify-content:center; padding:1.5cqw 0;">
-            <button class="screen-btn active-target" id="btn-complete-sim" style="background:var(--pink-primary); color:#fff; border:none; width:80%;">Finalizar Estudo</button>
+        
+        <div style="display:flex; flex-direction:column; width:100%;">
+            <div class="device-screen-footer" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; border-top: 1px solid #cbd5e1; padding: 1.5cqw 0; width:100%;">
+                <div class="device-soft-btn active-target" id="btn-device-soft-back" style="font-size: 4cqw; color: #22c55e; cursor: pointer; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-left-long"></i></div>
+                <div class="device-soft-btn" style="font-size: 4cqw; color: #94a3b8; padding: 1cqw 3cqw;"><i class="fa-regular fa-comment"></i></div>
+                <div class="device-soft-btn" style="font-size: 4cqw; color: #475569; padding: 1cqw 3cqw;"><i class="fa-solid fa-print"></i></div>
+                <div class="device-soft-btn" style="font-size: 4cqw; color: #3b82f6; padding: 1cqw 3cqw;"><i class="fa-solid fa-circle-info"></i></div>
+            </div>
         </div>
     </div>`;
 }
@@ -482,9 +655,27 @@ function initSimulator() {
         }
     });
 
+    // New Voltar Etapa button inside the simulator top bar
+    const prevStepSimBtn = document.getElementById('btn-prev-step-sim');
+    if (prevStepSimBtn) {
+        prevStepSimBtn.addEventListener('click', () => {
+            if (currentStep > 1) {
+                loadStep(currentStep - 1);
+            }
+        });
+    }
+
     document.getElementById('btn-restart-sim').addEventListener('click', () => {
         loadStep(1);
     });
+
+    // New Reiniciar button inside the simulator top bar
+    const restartSimDeviceBtn = document.getElementById('btn-restart-sim-device');
+    if (restartSimDeviceBtn) {
+        restartSimDeviceBtn.addEventListener('click', () => {
+            loadStep(1);
+        });
+    }
 
     // Botão flutuante de reiniciar o aparelho (iPad)
     const restartDeviceBtn = document.getElementById('btn-restart-device');
@@ -497,6 +688,84 @@ function initSimulator() {
     // Device click-handler using delegation
     const screenContainer = document.getElementById('screen-content');
     screenContainer.addEventListener('click', (e) => {
+        // Intercept ipsi/contra selector clicks at any step
+        const ipsiToggle = e.target.closest('#btn-ipsi-toggle');
+        const contraToggle = e.target.closest('#btn-contra-toggle');
+        
+        if (ipsiToggle && currentStep !== 6) {
+            currentReflexView = 'ipsi';
+            let reflexMode = 'contra-done';
+            if (currentStep === 5) reflexMode = 'ipsi';
+            else if (currentStep === 7) reflexMode = 'contra-ready';
+            screenContainer.innerHTML = getReflexScreenHTML(reflexMode, false);
+            return;
+        }
+        if (contraToggle && currentStep !== 6) {
+            currentReflexView = 'contra';
+            let reflexMode = 'contra-done';
+            if (currentStep === 5) reflexMode = 'ipsi';
+            else if (currentStep === 7) reflexMode = 'contra-ready';
+            screenContainer.innerHTML = getReflexScreenHTML(reflexMode, false);
+            return;
+        }
+
+        // Intercept log clicks on Step 9 History list
+        const tympLog = e.target.closest('#btn-tymp226-log');
+        const reflexLog = e.target.closest('#btn-reflex-log');
+        
+        if (tympLog && currentStep === 9 && subStep === 0) {
+            subStep = 1;
+            screenContainer.innerHTML = getFinalResultScreenHTML();
+            document.getElementById('step-title').innerText = "Passo 9: Reveja os exames e finalize o estudo";
+            document.getElementById('step-description').innerText = "Veja a curva timpanométrica completa e os valores (ECV, TW, Peak) na tela. Anote-os no prontuário e use a seta de voltar.";
+            document.getElementById('device-alert').innerText = "Reveja a timpanometria e use a seta verde para voltar.";
+            document.getElementById('device-alert').style.color = "var(--pink-primary)";
+            return;
+        }
+        
+        if (reflexLog && currentStep === 9 && subStep === 0) {
+            subStep = 2;
+            screenContainer.innerHTML = getReflexScreenHTML('contra-done', false);
+            document.getElementById('step-title').innerText = "Passo 9: Reveja os exames e finalize o estudo";
+            document.getElementById('step-description').innerText = "Veja os limiares de reflexo acústico na orelha selecionada. Use a seta verde para voltar.";
+            document.getElementById('device-alert').innerText = "Reveja os reflexos e use a seta verde para voltar.";
+            document.getElementById('device-alert').style.color = "var(--pink-primary)";
+            return;
+        }
+
+        // Intercept soft back key
+        const softBack = e.target.closest('#btn-device-soft-back');
+        if (softBack) {
+            if (currentStep === 9 && subStep > 0) {
+                subStep = 0;
+                loadStep(9);
+                return;
+            }
+            if (currentStep > 1) {
+                loadStep(currentStep - 1);
+            }
+            return;
+        }
+
+        // Intercept save icon in Step 8
+        const saveIcon = e.target.closest('#btn-reflex-save-icon');
+        if (saveIcon && currentStep === 8 && subStep === 0) {
+            const stopBtn = document.getElementById('btn-reflex-stop');
+            if (stopBtn) stopBtn.click();
+            return;
+        }
+
+        // Intercept "Cancelar" button in cancel measurement dialog
+        if (e.target.closest('#btn-cancelar-gravar')) {
+            subStep = 0;
+            screenContainer.innerHTML = getReflexScreenHTML('contra-done', false);
+            document.getElementById('step-title').innerText = "Passo 8: Pare e grave os dados";
+            document.getElementById('step-description').innerText = "Pressione o quadrado (■) para parar a medição. Depois confirme a gravação dos dados clicando em \"Sim\".";
+            document.getElementById('device-alert').innerText = "Clique no quadrado (■) para parar.";
+            document.getElementById('device-alert').style.color = "var(--pink-primary)";
+            return;
+        }
+
         if (!simulatorActive) return;
 
         // SE UMA TELA ALTERNATIVA ESTIVER ATIVA (fluxo de erro realista)
@@ -530,7 +799,7 @@ function initSimulator() {
         if (currentStep === 8) {
             targetSelector = subStep === 0 ? "#btn-reflex-stop" : "#btn-sim-gravar";
         } else if (currentStep === 9) {
-            targetSelector = subStep === 0 ? "#btn-tymp226-log" : "#btn-complete-sim";
+            targetSelector = subStep === 0 ? ".history-item-btn" : "#btn-complete-sim";
         }
 
         const targetElement = e.target.closest(targetSelector);
@@ -539,10 +808,17 @@ function initSimulator() {
             // Correct click! Show visual feedback
             targetElement.classList.add('success-flash');
 
-            // Capture cartoon mode state if on step 3
+            // Capture cartoon mode and ear selection state if on step 3
             if (currentStep === 3) {
                 const animModeCheckbox = document.getElementById('anim-mode');
                 animModeActive = animModeCheckbox ? animModeCheckbox.checked : false;
+
+                if (targetElement.id === 'btn-esquerdo') {
+                    selectedEar = 'esquerdo';
+                } else if (targetElement.id === 'btn-direito') {
+                    selectedEar = 'direito';
+                }
+                generateTestResultsForEar(selectedEar);
             }
 
             document.getElementById('device-alert').innerText = "Excelente! Passo correto.";
@@ -558,15 +834,17 @@ function initSimulator() {
                     simulatorActive = false;
                     runContraReflexAnimation();
                 } else if (currentStep === 8 && subStep === 0) {
-                    // Transition to sub-step 1 (Gravar dados? dialog)
+                    // Transition to sub-step 1 (Cancelar medição dialog)
                     subStep = 1;
                     screenContainer.innerHTML = `
                         <div class="confirm-dialog-wrapper" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
                             <div class="confirm-dialog" style="background:#fff; border: 1px solid #cbd5e1; width: 100%;">
-                                <div class="confirm-dialog-title" style="font-weight:700; text-align:center; color: #1e293b; font-size:3cqw; padding:2cqw;">Gravar dados?</div>
+                                <div class="confirm-dialog-title" style="font-weight:700; text-align:center; color: #ef4444; font-size:3cqw; padding:2cqw;">Cancelar medição</div>
+                                <div style="font-size:2.8cqw; text-align:center; color:#475569; padding:2cqw;">Cancelando medição. Gravar dados?</div>
                                 <div class="confirm-dialog-buttons" style="display:flex; justify-content:space-around; gap:2cqw; padding:2cqw;">
-                                    <button class="screen-btn active-target confirm-dialog-btn confirm-dialog-yes" id="btn-sim-gravar" style="flex-grow:1; padding:2cqw;">Sim</button>
-                                    <button class="screen-btn confirm-dialog-btn confirm-dialog-no" id="btn-nao-gravar" style="flex-grow:1; padding:2cqw;">Não</button>
+                                    <button class="screen-btn active-target confirm-dialog-btn confirm-dialog-yes" id="btn-sim-gravar" style="flex-grow:1; padding:2cqw; font-weight:bold;">Sim</button>
+                                    <button class="screen-btn confirm-dialog-btn confirm-dialog-no" id="btn-nao-gravar" style="flex-grow:1; padding:2cqw; font-weight:bold;">Não</button>
+                                    <button class="screen-btn confirm-dialog-btn" id="btn-cancelar-gravar" style="flex-grow:1; padding:2cqw; background:#cbd5e1; color:#334155; font-weight:bold;">Cancelar</button>
                                 </div>
                             </div>
                         </div>
@@ -575,15 +853,7 @@ function initSimulator() {
                     document.getElementById('step-description').innerText = "Selecione 'Sim' no visor do aparelho para salvar o resultado do exame na memória.";
                     document.getElementById('device-alert').innerText = "Selecione 'Sim' para salvar.";
                     document.getElementById('device-alert').style.color = "var(--pink-primary)";
-                } else if (currentStep === 9 && subStep === 0) {
-                    // Transition to sub-step 1 (Show final result plot screen)
-                    subStep = 1;
-                    screenContainer.innerHTML = getFinalResultScreenHTML();
-                    document.getElementById('step-title').innerText = "Passo 9: Anote os resultados e finalize";
-                    document.getElementById('step-description').innerText = "Veja a curva timpanométrica completa e os valores (ECV, TW, Peak) na tela. Anote-os no prontuário e clique em 'Finalizar Estudo'.";
-                    document.getElementById('device-alert').innerText = "Anote os resultados e clique em 'Finalizar Estudo'.";
-                    document.getElementById('device-alert').style.color = "var(--pink-primary)";
-                } else if (currentStep === 9 && subStep === 1) {
+                } else if (currentStep === 9) {
                     if (!document.body.classList.contains('device-only-active')) {
                         alert("Você concluiu a simulação passo a passo! Agora pratique as curvas no laboratório.");
                     }
@@ -747,6 +1017,33 @@ function initSimulator() {
     });
 }
 
+function updateDeviceHeader() {
+    const deviceBrand = document.querySelector('.device-brand');
+    if (deviceBrand) {
+        if (currentStep === 1) {
+            deviceBrand.innerText = "Menu Principal";
+        } else if (currentStep === 2) {
+            deviceBrand.innerText = "Módulo de Teste";
+        } else if (currentStep === 3) {
+            deviceBrand.innerText = "Selecionar Orelha";
+        } else if (currentStep === 4) {
+            deviceBrand.innerText = "Tymp";
+        } else if (currentStep >= 5 && currentStep <= 8) {
+            deviceBrand.innerText = "Reflexo";
+        } else if (currentStep === 9) {
+            if (subStep === 0) {
+                deviceBrand.innerText = "Histórico";
+            } else if (subStep === 1) {
+                deviceBrand.innerText = "Tymp";
+            } else if (subStep === 2) {
+                deviceBrand.innerText = "Reflexo";
+            }
+        } else {
+            deviceBrand.innerText = "PATH MEDICAL";
+        }
+    }
+}
+
 function loadStep(stepNum) {
     currentStep = stepNum;
     subStep = 0;
@@ -756,7 +1053,15 @@ function loadStep(stepNum) {
     if (stepNum === 1) {
         skipReflexes = false;
         alternativeScreenActive = false;
+        ipsiMeasuredFreqs = [];
+        contraMeasuredFreqs = [];
         generateRandomTestResults();
+    }
+
+    if (stepNum === 5) {
+        currentReflexView = 'ipsi';
+    } else if (stepNum === 7) {
+        currentReflexView = 'contra';
     }
 
     const stepData = simSteps[currentStep];
@@ -775,6 +1080,11 @@ function loadStep(stepNum) {
     // Toggle Previous Button state
     document.getElementById('btn-prev-step').disabled = currentStep === 1;
 
+    const prevStepSimBtn = document.getElementById('btn-prev-step-sim');
+    if (prevStepSimBtn) {
+        prevStepSimBtn.disabled = currentStep === 1;
+    }
+
     // Set screen HTML
     const screenContent = document.getElementById('screen-content');
     screenContent.innerHTML = stepData.getScreenHTML();
@@ -785,6 +1095,8 @@ function loadStep(stepNum) {
     else if (currentStep <= 4) screenTime.innerText = "11:18";
     else if (currentStep <= 6) screenTime.innerText = "11:20";
     else screenTime.innerText = "11:22";
+
+    updateDeviceHeader();
 
     document.getElementById('device-alert').innerText = stepData.alertText;
     document.getElementById('device-alert').style.color = "var(--pink-primary)";
@@ -802,6 +1114,7 @@ function loadStep(stepNum) {
 // SIMULATION ANIMATIONS
 function runTympPlotAnimation() {
     const liveCurve = document.getElementById('live-curve');
+    const liveVolumeBar = document.getElementById('live-volume-bar');
     const liveP = document.getElementById('live-p');
     const liveC = document.getElementById('live-c');
     let progress = 0;
@@ -822,16 +1135,21 @@ function runTympPlotAnimation() {
         if (liveC) liveC.innerText = currentCompliance;
 
         // Draw SVG Path incrementally if in standard mode
+        const svgX = 28 + (progress / 100) * 217;
+        const svgY = 148 - (currentCompliance / 2.0) * 133;
+
         if (liveCurve) {
-            const svgX = 30 + (progress / 100) * 215;
-            const svgY = 148 - (currentCompliance / 3.0) * 133;
-            
             if (progress === 4) {
                 liveCurve.setAttribute('d', `M ${svgX},${svgY}`);
             } else {
                 const currentD = liveCurve.getAttribute('d');
                 liveCurve.setAttribute('d', `${currentD} L ${svgX},${svgY}`);
             }
+        }
+
+        // Animate the left vertical compliance bar in real-time
+        if (liveVolumeBar) {
+            liveVolumeBar.setAttribute('y2', svgY);
         }
 
         // Animates character scale in Cartoon Mode
@@ -860,10 +1178,16 @@ function runTympPlotAnimation() {
             if (resultBar) resultBar.style.display = 'block';
             if (statusBar) statusBar.style.display = 'none';
             
+            // Set vertical volume bar to display final initial compliance/volume level
+            if (liveVolumeBar) {
+                const finalVolumeY = 148 - (parseFloat(currentTestResults.ecv) / 2.0) * 133;
+                liveVolumeBar.setAttribute('y2', finalVolumeY);
+            }
+
             const peakMarker = document.getElementById('peak-marker');
             if (peakMarker) {
-                const peakX = 30 + peakProgressPercent * 215;
-                const peakY = 148 - (peakVal / 3.0) * 133;
+                const peakX = 28 + peakProgressPercent * 217;
+                const peakY = 148 - (peakVal / 2.0) * 133;
                 peakMarker.setAttribute('cx', peakX);
                 peakMarker.setAttribute('cy', peakY);
                 peakMarker.style.display = 'block';
@@ -877,7 +1201,7 @@ function runTympPlotAnimation() {
                 } else {
                     loadStep(5);
                 }
-            }, 1500);
+            }, 3000);
         }
     }, 60);
 }
@@ -885,6 +1209,7 @@ function runTympPlotAnimation() {
 function runIpsiReflexAnimation() {
     const freqs = [500, 1000, 2000, 4000];
     let freqIdx = 0;
+    currentReflexView = 'ipsi';
 
     function testNextFrequency() {
         if (freqIdx >= freqs.length) {
@@ -921,7 +1246,7 @@ function runIpsiReflexAnimation() {
             // Draw trace
             const tracesGroup = document.getElementById('reflex-traces');
             if (tracesGroup) {
-                const colors = ['#22c55e', '#84cc16', '#eab308', '#f97316'];
+                const color = selectedEar === 'esquerdo' ? '#2563eb' : '#ef4444';
                 const xStart = 20 + freqIdx * 25;
                 const yBase = 60 - freqIdx * 3;
                 const deflection = parseFloat(ipsiData.amp) * 120;
@@ -929,7 +1254,7 @@ function runIpsiReflexAnimation() {
                 const newPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 newPath.setAttribute('d', `M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}`);
                 newPath.setAttribute('fill', 'none');
-                newPath.setAttribute('stroke', colors[freqIdx]);
+                newPath.setAttribute('stroke', color);
                 newPath.setAttribute('stroke-width', '1');
                 newPath.setAttribute('opacity', '0.9');
                 tracesGroup.appendChild(newPath);
@@ -973,6 +1298,7 @@ function runIpsiReflexAnimation() {
 function runContraReflexAnimation() {
     const freqs = [500, 1000, 2000, 4000];
     let freqIdx = 0;
+    currentReflexView = 'contra';
 
     function testNextFrequency() {
         if (freqIdx >= freqs.length) {
@@ -1009,7 +1335,7 @@ function runContraReflexAnimation() {
             // Draw trace
             const tracesGroup = document.getElementById('reflex-traces');
             if (tracesGroup) {
-                const colors = ['#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1'];
+                const color = selectedEar === 'esquerdo' ? '#ef4444' : '#2563eb';
                 const xStart = 20 + freqIdx * 25;
                 const yBase = 48 - freqIdx * 3;
                 const deflection = parseFloat(contraData.amp) * 120;
@@ -1017,7 +1343,7 @@ function runContraReflexAnimation() {
                 const newPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 newPath.setAttribute('d', `M${xStart},${yBase} L${xStart+3},${yBase} L${xStart+5},${yBase + deflection} L${xStart+8},${yBase + deflection * 0.75} L${xStart+12},${yBase + deflection * 0.15} L${xStart+18},${yBase}`);
                 newPath.setAttribute('fill', 'none');
-                newPath.setAttribute('stroke', colors[freqIdx]);
+                newPath.setAttribute('stroke', color);
                 newPath.setAttribute('stroke-width', '1');
                 newPath.setAttribute('opacity', '0.9');
                 tracesGroup.appendChild(newPath);
