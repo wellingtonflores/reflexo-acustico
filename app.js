@@ -466,6 +466,107 @@ function getContraTraceSVG() {
 }
 
 function getReflexScreenHTML(mode, isAnimating) {
+    if (currentStep === 9) {
+        const isIpsi = currentReflexView === 'ipsi';
+        const ipsiToggleClass = isIpsi ? 'reflex-toggle active' : 'reflex-toggle';
+        const contraToggleClass = !isIpsi ? 'reflex-toggle active' : 'reflex-toggle';
+        const ipsiDotClass = isIpsi ? 'reflex-dot active' : 'reflex-dot';
+        const contraDotClass = !isIpsi ? 'reflex-dot active-contra' : 'reflex-dot';
+        
+        let waveColor = '';
+        if (selectedEar === 'esquerdo') {
+            waveColor = isIpsi ? '#2563eb' : '#ef4444';
+        } else {
+            waveColor = isIpsi ? '#ef4444' : '#2563eb';
+        }
+
+        const dataSrc = isIpsi ? currentTestResults.ipsi : currentTestResults.contra;
+
+        const freqLabels = {
+            500: '.5k',
+            1000: '1k',
+            2000: '2k',
+            4000: '4k'
+        };
+
+        let rowsHTML = '';
+        const rowsToRender = [500, 1000, 2000, '3k', 4000];
+
+        rowsToRender.forEach(f => {
+            if (f === '3k') {
+                rowsHTML += `
+                <div class="reflex-history-row" style="display:flex; flex-direction:column; padding:0.8cqw 2cqw; border-bottom:1px solid #cbd5e1; height:15.5%;">
+                    <div style="display:flex; align-items:center; width:100%; height:100%;">
+                        <span style="font-weight:700; font-size:2.8cqw; width:10%; color:#94a3b8;">3k</span>
+                        <div style="flex-grow:1; height:1px; background:#f8fafc;"></div>
+                    </div>
+                </div>`;
+            } else {
+                const label = freqLabels[f];
+                const item = dataSrc[f];
+                const threshold = parseInt(item.db);
+                const amp = parseFloat(item.amp);
+                
+                // Draw wave deflection SVG
+                const deflection = amp * 80;
+                const d = `M 10,10 L 35,10 C 42,${10 + deflection} 48,${10 + deflection} 55,10 L 110,10`;
+                const waveSVG = `
+                <svg viewBox="0 0 120 20" style="flex-grow:1; height:100%;">
+                    <path d="${d}" fill="none" stroke="${waveColor}" stroke-width="1.2" opacity="0.9"/>
+                </svg>`;
+
+                // Determine dynamic intensity list
+                let intensities = [80, 85, 90, 95];
+                if (threshold > 95) {
+                    intensities = [85, 90, 95, threshold];
+                } else if (threshold < 80) {
+                    intensities = [threshold, 80, 85, 90];
+                }
+
+                const intensitiesHTML = intensities.map(val => {
+                    if (val === threshold) {
+                        return `<span style="color:#22c55e; font-weight:bold; display:inline-flex; align-items:center; gap:0.5cqw;"><i class="fa-solid fa-check"></i>${val}</span>`;
+                    }
+                    return `<span style="color:#64748b;">${val}</span>`;
+                }).join('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;');
+
+                rowsHTML += `
+                <div class="reflex-history-row" style="display:flex; flex-direction:column; padding:0.8cqw 2cqw; border-bottom:1px solid #cbd5e1; height:17%;">
+                    <div style="display:flex; align-items:center; width:100%; height:55%;">
+                        <span style="font-weight:700; font-size:2.8cqw; width:10%; color:#475569;">${label}</span>
+                        ${waveSVG}
+                    </div>
+                    <div style="font-family: monospace; font-size:2.4cqw; padding-left:10%; color:#1e293b; display:flex; align-items:center; height:45%;">
+                        ${intensitiesHTML}
+                    </div>
+                </div>`;
+            }
+        });
+
+        return `<div class="reflex-screen" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; background:#fff;">
+            <div class="reflex-header" style="display:flex; justify-content:space-between; align-items:center; padding:1.5cqw 2cqw; font-size:2.8cqw; background:#f8fafc; border-bottom:1px solid #cbd5e1; color:#1e293b;">
+                <span style="font-weight:700;">Reflexo</span>
+                <span style="font-size:2cqw; color:#64748b;">1dB</span>
+            </div>
+            
+            <div style="flex-grow:1; display:flex; flex-direction:column; min-height:0; overflow-y:auto; background:#fff;">
+                ${rowsHTML}
+            </div>
+
+            <div class="reflex-toggle-row" style="display:flex; align-items:center; gap:4cqw; padding:1.2cqw 2cqw; font-size:2.8cqw; border-top:1px solid #e2e8f0; color:#64748b;">
+                <span class="${ipsiToggleClass} reflex-toggle-btn" id="btn-ipsi-toggle" style="display:flex; align-items:center; gap:1cqw; cursor:pointer;"><span class="${ipsiDotClass}"></span> ipsi</span>
+                <span class="${contraToggleClass} reflex-toggle-btn" id="btn-contra-toggle" style="display:flex; align-items:center; gap:1cqw; cursor:pointer;"><span class="${contraDotClass}"></span> contra</span>
+            </div>
+
+            <div class="device-screen-footer" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; border-top: 1px solid #cbd5e1; padding: 1.5cqw 0; width:100%;">
+                <div class="device-soft-btn active-target" id="btn-device-soft-back" style="font-size: 4cqw; color: #22c55e; cursor: pointer; padding: 1cqw 3cqw;"><i class="fa-solid fa-arrow-left-long"></i></div>
+                <div class="device-soft-btn" style="font-size: 4cqw; color: #94a3b8; padding: 1cqw 3cqw;"><i class="fa-regular fa-comment"></i></div>
+                <div class="device-soft-btn" style="font-size: 4cqw; color: #475569; padding: 1cqw 3cqw;"><i class="fa-solid fa-print"></i></div>
+                <div class="device-soft-btn" style="font-size: 4cqw; color: #3b82f6; padding: 1cqw 3cqw;"><i class="fa-solid fa-circle-info"></i></div>
+            </div>
+        </div>`;
+    }
+
     const ipsiActive = mode === 'ipsi' || mode === 'ipsi-done';
     const contraActive = mode === 'contra-ready' || mode === 'contra-done' || mode === 'contra-anim';
     const ipsiDone = mode === 'ipsi-done' || contraActive;
